@@ -1,0 +1,128 @@
+{
+  "format": 1,
+  "restore": {
+    "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Client\\MUD_Skeleton.Client.csproj": {}
+  },
+  "projects": {
+    "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Client\\MUD_Skeleton.Client.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Client\\MUD_Skeleton.Client.csproj",
+        "projectName": "MUD_Skeleton.Client",
+        "projectPath": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Client\\MUD_Skeleton.Client.csproj",
+        "packagesPath": "C:\\Users\\Jose Johnen\\.nuget\\packages\\",
+        "outputPath": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Client\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Jose Johnen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "D:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "D:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {
+              "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\MUD_Skeleton.Commons.csproj": {
+                "projectPath": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\MUD_Skeleton.Commons.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "D:\\Program Files\\dotnet\\sdk\\7.0.401\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\MUD_Skeleton.Commons.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\MUD_Skeleton.Commons.csproj",
+        "projectName": "MUD_Skeleton.Commons",
+        "projectPath": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\MUD_Skeleton.Commons.csproj",
+        "packagesPath": "C:\\Users\\Jose Johnen\\.nuget\\packages\\",
+        "outputPath": "E:\\Cod_Pers\\Visual_Studio\\MUD_SKELETON\\MUD_Skeleton.Commons\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\Jose Johnen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "D:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "D:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "D:\\Program Files\\dotnet\\sdk\\7.0.401\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

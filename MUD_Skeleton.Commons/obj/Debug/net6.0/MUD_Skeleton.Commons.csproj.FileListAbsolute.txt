@@ -1,0 +1,11 @@
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\bin\Debug\net6.0\MUD_Skeleton.Commons.deps.json
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\bin\Debug\net6.0\MUD_Skeleton.Commons.dll
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\bin\Debug\net6.0\MUD_Skeleton.Commons.pdb
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.GeneratedMSBuildEditorConfig.editorconfig
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.AssemblyInfoInputs.cache
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.AssemblyInfo.cs
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.csproj.CoreCompileInputs.cache
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.dll
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\refint\MUD_Skeleton.Commons.dll
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\MUD_Skeleton.Commons.pdb
+E:\Cod_Pers\Visual_Studio\MUD_SKELETON\MUD_Skeleton.Commons\obj\Debug\net6.0\ref\MUD_Skeleton.Commons.dll
