@@ -1,4 +1,5 @@
-﻿using MUD_Skeleton.Commons.Auxiliary;
+﻿using MUD_Skeleton.Client.Controllers;
+using MUD_Skeleton.Commons.Auxiliary;
 using System.Net.Sockets;
 using System.Text;
 
@@ -10,18 +11,6 @@ namespace MUD_Skeleton.Client
     {
         static List<Pares<string, Thread>> l_clientThreads = new List<Pares<string, Thread>>();
 
-        private static List<uint> l_channels = new List<uint>();
-        public static List<uint> L_channels
-        {
-            get
-            {
-                return l_channels;
-            }
-            set
-            {
-                l_channels = value;
-            }
-        }
 
         //static Thread clientThreadSend;
         //static Thread clientThreadReceive;
@@ -42,6 +31,9 @@ namespace MUD_Skeleton.Client
         {
             try
             {
+                //Prepare client for connections and uses
+                Controller.Controller_Start();
+
                 string serverIp = "127.0.0.1"; // Replace with the server IP address
                                                //int serverPortClientToServer = 12345; // Replace with the server's client-to-server port number
                                                //int serverPortServerToClient = 12346; // Replace with the server's server-to-client port number
@@ -56,7 +48,8 @@ namespace MUD_Skeleton.Client
                     externalMessage = Console.ReadLine();
                     if (!string.IsNullOrWhiteSpace(externalMessage))
                     {
-                        ConnectionManager.cq_instructionsToSend.Enqueue(externalMessage);
+                        ConnectionManager.WriterSend.WriteAsync(externalMessage);
+                        //ConnectionManager.cq_instructionsToSend.Enqueue(externalMessage);
                         externalMessage = string.Empty;
                     }
                 }
@@ -208,7 +201,8 @@ namespace MUD_Skeleton.Client
 
                     //Reading the message . . . And publishing in console to be read
                     ConnectionManager.receivedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                    ConnectionManager.cq_instructionsReceived.Enqueue(ConnectionManager.receivedMessage);
+                    ConnectionManager.WriterReceive.WriteAsync(ConnectionManager.receivedMessage);
+                    //ConnectionManager.cq_instructionsReceived.Enqueue(ConnectionManager.receivedMessage);
                     //Console.Out.WriteLine("Received from server: " + receivedMessage);
                     Console.WriteLine("Received: " + ConnectionManager.receivedMessage + " TOTAL : " + ConnectionManager.cq_instructionsReceived.Count);
                     ConnectionManager.receivedMessage = string.Empty;

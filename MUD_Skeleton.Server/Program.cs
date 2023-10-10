@@ -29,6 +29,9 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                //Preparing to receive data of players
+                InputController.InputController_Start();
+
                 IPAddress ipAddress = IPAddress.Parse("127.0.0.1"); // Replace with your desired server IP address
                 int portClientToServer = 12345; // Replace with the desired port number for client-to-server communication
                 int portServerToClient = 12346; // Replace with the desired port number for server-to-client communication
@@ -40,9 +43,6 @@ namespace MUD_Skeleton.Server
                 // Set up the listener for server-to-client communication
                 serverToClientListener = new TcpListener(ipAddress, portServerToClient);
                 serverToClientListener.Start();
-
-                //Preparing to receive data of players
-                InputController.InputController_Start();
 
                 Console.WriteLine("Server started. Waiting for connections...");
                 while (true)
@@ -70,6 +70,14 @@ namespace MUD_Skeleton.Server
                     clientThread = new Thread(() => HandleClientReceiveCommunication(onlineClient));
                     clientThread.Start();
                     dic_clientThreads.Add(onlineClient.Name + "_RECEIVE", clientThread);
+
+                    clientThread = new Thread(() => onlineClient.ReadingChannelReceive());
+                    clientThread.Start();
+                    dic_clientThreads.Add(onlineClient.Name + "_READCHANNELRECEIVE", clientThread);
+
+                    clientThread = new Thread(() => onlineClient.ReadingChannelSend());
+                    clientThread.Start();
+                    dic_clientThreads.Add(onlineClient.Name + "_READCHANNELSEND", clientThread);
                 }
 
                 ////Start handling communication
@@ -90,34 +98,34 @@ namespace MUD_Skeleton.Server
                 while (true)
                 {
                     // Echo the received data back to the client using server-to-client connection
-                    if (onlineClient.bytesRead != 0)
-                    {
-                        //serverToClientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
-                        // Send to Every Client all the data than correspond
+                    //if (onlineClient.bytesRead != 0)
+                    //{
+                    //    //serverToClientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
+                    //    // Send to Every Client all the data than correspond
 
-                        Console.WriteLine("client: " + onlineClient.Name);
-                        //if (client != onlineClient)
-                        //{
-                        while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
+                    //    Console.WriteLine("client: " + onlineClient.Name);
+                    //    //if (client != onlineClient)
+                    //    //{
+                    while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
+                    {
+                        //Esto deja preparado el Buffer para ser consumido
+                        onlineClient.Information = instruction;
+                        if (onlineClient.serverToClientClient.Connected != false)
                         {
-                            //Esto deja preparado el Buffer para ser consumido
-                            onlineClient.Information = instruction;
-                            if (onlineClient.serverToClientClient.Connected != false)
-                            {
-                                NetworkStream clientStream = onlineClient.serverToClientClient.GetStream();
-                                clientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
-                            }
-                            else
-                            {
-                                // Clean up, because the connection is broken, will need to be redo anyways
-                                onlineClient.serverToClientClient.Close();
-                                onlineClient.clientToServerClient.Close();
-                                return;
-                            }
+                            NetworkStream clientStream = onlineClient.serverToClientClient.GetStream();
+                            clientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
                         }
-                        //}
-                        onlineClient.bytesRead = 0;
+                        else
+                        {
+                            // Clean up, because the connection is broken, will need to be redo anyways
+                            onlineClient.serverToClientClient.Close();
+                            onlineClient.clientToServerClient.Close();
+                            return;
+                        }
                     }
+                    //}
+                    //    onlineClient.bytesRead = 0;
+                    //}
                 }
 
                 // Close the listeners
@@ -162,7 +170,8 @@ namespace MUD_Skeleton.Server
                     //Reading the message . . . And publishing in console to be read
                     string receivedMessage = Encoding.ASCII.GetString(onlineClient.Buffer, 0, onlineClient.bytesRead);
                     Console.WriteLine("Received from client: " + receivedMessage);
-                    onlineClient.L_ReceiveQueueMessages.Enqueue(receivedMessage);
+                    onlineClient.WriterReceive.WriteAsync(receivedMessage);
+                    //onlineClient.L_ReceiveQueueMessages.Enqueue(receivedMessage);
                 }
 
                 // Close the listeners

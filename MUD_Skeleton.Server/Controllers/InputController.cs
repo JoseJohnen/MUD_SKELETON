@@ -1,5 +1,6 @@
 ﻿using MUD_Skeleton.Commons.Comms;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 
 namespace MUD_Skeleton.Server.Controllers
 {
@@ -9,7 +10,7 @@ namespace MUD_Skeleton.Server.Controllers
         public static InputController Instance { get => instance; private set => instance = value; }
         private static Thread InputControllerRunning;
 
-        private static ConcurrentDictionary<string, InputController> _a;
+        //private static ConcurrentDictionary<string, InputController> _a;
 
         public static void InputController_Start()
         {
@@ -25,14 +26,22 @@ namespace MUD_Skeleton.Server.Controllers
             {
                 string strInstruction = string.Empty;
                 int i = 0;
+
+                if(OnlineClient.l_onlineClients.Count == 0)
+                {
+                    continue;
+                }
+
                 foreach (OnlineClient oNclt in OnlineClient.l_onlineClients.Reverse<OnlineClient>())
                 {
                     while (oNclt.L_ReceiveQueueMessages.TryDequeue(out strInstruction))
                     {
                         if (!string.IsNullOrWhiteSpace(strInstruction))
                         {
+                            Console.Out.WriteLine("strInstruction: " + strInstruction);
                             ProcessDataFromPlayers(strInstruction, i);
                             Console.Out.WriteLine("oNclt.L_ReceiveQueueMessages count: " + oNclt.L_ReceiveQueueMessages.Count);
+                            Console.Out.WriteLine("oNclt.L_SendQueueMessages count: " + oNclt.L_SendQueueMessages.Count);
                             //ProcessDataFromPlayersIrc(strInstruction, i);
                         }
                     }
@@ -58,9 +67,18 @@ namespace MUD_Skeleton.Server.Controllers
                 /*
                  * Do Some Cleaning-Preparing-Decrypting magic here
                  */
-                string item = data;
+                string itm = data;
+                string content = string.Empty;
+                string[] arrStr;
+                if (data.Contains("/"))
+                {
+                    arrStr = data.Split(":", StringSplitOptions.RemoveEmptyEntries);
+                    itm = arrStr[0];
+                    content = arrStr[1];
+                }
 
-                switch (item)
+                uint tempUint = 0;
+                switch (itm)
                 {
                     case "MV:":
                         /*
@@ -68,14 +86,85 @@ namespace MUD_Skeleton.Server.Controllers
                          * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
                          */
                         break;
+                    case "/ADD":
+                        if (uint.TryParse(content, out tempUint))
+                        {
+                            if (!OnlineClient.l_onlineClients[position].l_channels.Contains(tempUint))
+                            {
+                                OnlineClient.l_onlineClients[position].l_channels.Add(tempUint);
+                                //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ADDCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ADDCHL:" + tempUint);
+                                string strListNum = string.Empty;
+                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                {
+                                    strListNum += str+",";
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel "+tempUint+" Added, Current List is: [" +strListNum+"]");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                /* El canal ya esta registrado al usuario */
+                                //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISPRSNTCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
+
+                                string strListNum = string.Empty;
+                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                {
+                                    strListNum += str + ",";
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel " + tempUint + " Is Already Registered, Current List is: [" + strListNum + "]");
+                                Console.ResetColor();
+                            }
+                        }
+                        break;
+                    case "/REM":
+                        if (uint.TryParse(content, out tempUint))
+                        {
+                            if (OnlineClient.l_onlineClients[position].l_channels.Contains(tempUint))
+                            {
+                                OnlineClient.l_onlineClients[position].l_channels.Remove(tempUint);
+                                //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~REMCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~REMCHL:" + tempUint);
+                                string strListNum = string.Empty;
+                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                {
+                                    strListNum += str + ",";
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel " + tempUint + " Removed, Current List is: [" + strListNum + "]");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                /* No encuentra el canal o no existe */
+                                //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISNONCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
+                                string strListNum = string.Empty;
+                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                {
+                                    strListNum += str + ",";
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel " + tempUint + " Is Non-Channel, Current List is: [" + strListNum + "]");
+                                Console.ResetColor();
+                            }
+                        }
+                        break;
                     default:
                         Console.BackgroundColor = ConsoleColor.Red;
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.Out.WriteLineAsync("ProcessDataFromPlayers Switch Default; " + item + "\nData: " + data);
+                        Console.Out.WriteLineAsync("ProcessDataFromPlayers Switch Default; " + itm + "\nData: " + data);
                         Console.ResetColor();
                         break;
                 }
-                
+
                 return String.Empty;
             }
             catch (Exception ex)

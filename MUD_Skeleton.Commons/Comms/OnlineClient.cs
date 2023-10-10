@@ -1,6 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Reflection.PortableExecutable;
 using System.Text;
+using System.Threading.Channels;
 
 namespace MUD_Skeleton.Commons.Comms
 {
@@ -17,6 +19,120 @@ namespace MUD_Skeleton.Commons.Comms
          * 
          * 4) Adicionar Protección contra Idempotencia
          */
+
+        #region Channels Related
+        //IT does create "Back Pressure"
+        //It will wait for space to be available in order to wait
+        private BoundedChannelOptions options = new BoundedChannelOptions(255);
+
+        private Channel<string> channelReceive = null;
+        public Channel<string> ChannelReceive
+        {
+            get
+            {
+                if (channelReceive == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelReceive = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelReceive;
+            }
+            set { channelReceive = value; }
+        }
+
+        private ChannelWriter<string> writerReceive = null;
+        public ChannelWriter<string> WriterReceive
+        {
+            get
+            {
+                if (writerReceive == null)
+                {
+                    writerReceive = ChannelReceive.Writer;
+                }
+                return writerReceive;
+            }
+            set => writerReceive = value;
+        }
+
+        private ChannelReader<string> readerReceive = null;
+        public ChannelReader<string> ReaderReceive
+        {
+            get 
+            {
+                if(readerReceive == null)
+                {
+                    readerReceive = ChannelReceive.Reader;
+                }
+                return readerReceive; 
+            }
+            set => readerReceive = value;
+        }
+
+        public async void ReadingChannelReceive()
+        {
+            while (await ReaderReceive.WaitToReadAsync())
+            {
+                string strTemp = await ReaderReceive.ReadAsync();
+                l_ReceiveQueueMessages.Enqueue(strTemp);
+                Console.Out.WriteLine($"ReadingReceive {strTemp}");
+                Console.Out.WriteLine($"ReadingReceive {l_ReceiveQueueMessages.Count}");
+            }
+        }
+
+        private Channel<string> channelSend = null;
+        public Channel<string> ChannelSend
+        {
+            get
+            {
+                if (channelSend == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelSend = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelSend;
+            }
+            set { channelSend = value; }
+        }
+
+        private ChannelWriter<string> writerSend = null;
+        public ChannelWriter<string> WriterSend
+        {
+            get
+            {
+                if (writerSend == null)
+                {
+                    writerSend = ChannelSend.Writer;
+                }
+                return writerSend;
+            }
+            set => writerSend = value;
+        }
+
+        private ChannelReader<string> readerSend = null;
+        public ChannelReader<string> ReaderSend
+        {
+            get
+            {
+                if (readerSend == null)
+                {
+                    readerSend = ChannelSend.Reader;
+                }
+                return readerSend;
+            }
+            set => readerSend = value;
+        }
+
+        public async void ReadingChannelSend()
+        {
+            while (await ReaderSend.WaitToReadAsync())
+            {
+                string strTemp = await ReaderSend.ReadAsync();
+                l_SendQueueMessages.Enqueue(strTemp);
+                Console.Out.WriteLine($"ReadingSend {strTemp}");
+                Console.Out.WriteLine($"ReadingSend {l_SendQueueMessages.Count}");
+            }
+        }
+        #endregion
 
         public static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
 
@@ -58,6 +174,14 @@ namespace MUD_Skeleton.Commons.Comms
         {
             get
             {
+                if (l_onlineClients == null)
+                {
+                    l_onlineClients = new List<OnlineClient>();
+                }
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = "_PROVISORY_"+l_onlineClients.Count.ToString();
+                }
                 return name;
             }
             set
@@ -66,7 +190,7 @@ namespace MUD_Skeleton.Commons.Comms
                 {
                     l_onlineClients = new List<OnlineClient>();
                 }
-                if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
+                else if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
                 {
                     l_onlineClients.Add(this);
                 }
@@ -76,50 +200,77 @@ namespace MUD_Skeleton.Commons.Comms
         #endregion
 
         #region Data Instructions Administration
-        private ConcurrentQueue<string> l_SendQueueMessages;
-        public ConcurrentQueue<string> L_SendQueueMessages
+        private Queue<string> l_SendQueueMessages;
+        public Queue<string> L_SendQueueMessages
         {
             get
             {
                 if (l_SendQueueMessages == null)
                 {
-                    l_SendQueueMessages = new ConcurrentQueue<string>();
+                    l_SendQueueMessages = new Queue<string>();
                 }
-                else if (l_SendQueueMessages.Count() == 0)
+                /*else if (l_SendQueueMessages.Count() == 0)
                 {
                     l_SendQueueMessages = new ConcurrentQueue<string>();
-                }
+                }*/
                 return l_SendQueueMessages;
             }
             set => l_SendQueueMessages = value;
         }
 
-        private ConcurrentQueue<string> l_ReceiveQueueMessages;
-        public ConcurrentQueue<string> L_ReceiveQueueMessages
+        private Queue<string> l_ReceiveQueueMessages;
+        public Queue<string> L_ReceiveQueueMessages
         {
             get
             {
                 if (l_ReceiveQueueMessages == null)
                 {
-                    l_ReceiveQueueMessages = new ConcurrentQueue<string>();
+                    l_ReceiveQueueMessages = new Queue<string>();
                 }
-                else if (l_ReceiveQueueMessages.Count() == 0)
+                /*else if (l_ReceiveQueueMessages.Count() == 0)
                 {
                     l_ReceiveQueueMessages = new ConcurrentQueue<string>();
-                }
+                }*/
                 return l_ReceiveQueueMessages;
             }
             set => l_ReceiveQueueMessages = value;
         }
 
+
+
         #endregion
         #endregion
 
         #region Constructores
-        public OnlineClient(string name) => Name = name;
+        public OnlineClient(string name)
+        {
+            Name = name;
+            options.FullMode = BoundedChannelFullMode.Wait;
+            ChannelReceive = System.Threading.Channels.Channel.CreateBounded<string>(options);
+            WriterReceive = ChannelReceive.Writer;
+            ReaderReceive = ChannelReceive.Reader;
+            ChannelSend = System.Threading.Channels.Channel.CreateBounded<string>(options);
+            WriterSend = ChannelSend.Writer;
+            ReaderSend = ChannelSend.Reader;
+            if (l_onlineClients == null)
+            {
+                l_onlineClients = new List<OnlineClient>();
+            }
+            if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
+            {
+                l_onlineClients.Add(this);
+            }
+        }
 
         public OnlineClient()
         {
+            options.FullMode = BoundedChannelFullMode.Wait;
+            ChannelReceive = System.Threading.Channels.Channel.CreateBounded<string>(options);
+            WriterReceive = ChannelReceive.Writer;
+            ReaderReceive = ChannelReceive.Reader;
+            ChannelSend = System.Threading.Channels.Channel.CreateBounded<string>(options);
+            WriterSend = ChannelSend.Writer;
+            ReaderSend = ChannelSend.Reader;
             if (l_onlineClients == null)
             {
                 l_onlineClients = new List<OnlineClient>();
