@@ -1,6 +1,5 @@
-﻿using MUD_Skeleton.Commons.Comms;
-using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
+﻿using MUD_Skeleton.Commons.Auxiliary;
+using MUD_Skeleton.Commons.Comms;
 
 namespace MUD_Skeleton.Server.Controllers
 {
@@ -67,15 +66,20 @@ namespace MUD_Skeleton.Server.Controllers
                 /*
                  * Do Some Cleaning-Preparing-Decrypting magic here
                  */
-                string itm = data;
+
+                Message msg = Message.CreateFromJson(data);
+                string itm = msg.TextOriginal;
+                Console.Out.WriteLineAsync("TextOriginal: "+msg.TextOriginal);
+                Console.Out.WriteLineAsync("itm: " + itm);
                 string content = string.Empty;
                 string[] arrStr;
-                if (data.Contains("/"))
+                if (itm.Contains("/"))
                 {
-                    arrStr = data.Split(":", StringSplitOptions.RemoveEmptyEntries);
+                    arrStr = itm.Split(":", StringSplitOptions.RemoveEmptyEntries);
                     itm = arrStr[0];
                     content = arrStr[1];
                 }
+                Console.Out.WriteLineAsync("itm Prepared: " + itm);
 
                 uint tempUint = 0;
                 switch (itm)
@@ -89,15 +93,17 @@ namespace MUD_Skeleton.Server.Controllers
                     case "/ADD":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (!OnlineClient.l_onlineClients[position].l_channels.Contains(tempUint))
+                            if (OnlineClient.l_onlineClients[position].L_channels.Where(c => c.Item2 == tempUint).ToList().Count() > 0)
                             {
-                                OnlineClient.l_onlineClients[position].l_channels.Add(tempUint);
+                                OnlineClient.l_onlineClients[position].L_channels.Add(new Pares<uint,uint>(0,tempUint));
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ADDCHL:" + tempUint);
-                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ADDCHL:" + tempUint);
+                                //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ADDCHL:" + tempUint);
+                                Message ansW = new Message("~ADDCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
                                 string strListNum = string.Empty;
-                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                foreach (Pares<uint,uint> str in OnlineClient.l_onlineClients[position].L_channels)
                                 {
-                                    strListNum += str+",";
+                                    strListNum += str.Item2+",";
                                 }
                                 Console.BackgroundColor = ConsoleColor.Green;
                                 Console.ForegroundColor = ConsoleColor.White;
@@ -108,12 +114,13 @@ namespace MUD_Skeleton.Server.Controllers
                             {
                                 /* El canal ya esta registrado al usuario */
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISPRSNTCHL:" + tempUint);
-                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
-
+                                //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
+                                Message ansW = new Message("~ISPRSNTCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
                                 string strListNum = string.Empty;
-                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                foreach (Pares<uint, uint> str in OnlineClient.l_onlineClients[position].L_channels)
                                 {
-                                    strListNum += str + ",";
+                                    strListNum += str.Item2 + ",";
                                 }
                                 Console.BackgroundColor = ConsoleColor.Green;
                                 Console.ForegroundColor = ConsoleColor.White;
@@ -125,15 +132,18 @@ namespace MUD_Skeleton.Server.Controllers
                     case "/REM":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (OnlineClient.l_onlineClients[position].l_channels.Contains(tempUint))
+                            //if (OnlineClient.l_onlineClients[position].L_channels.Contains(tempUint))
+                            if (OnlineClient.l_onlineClients[position].L_channels.Where(c => c.Item2 == tempUint).ToList().Count() > 0)
                             {
-                                OnlineClient.l_onlineClients[position].l_channels.Remove(tempUint);
+                                OnlineClient.l_onlineClients[position].L_channels.RemoveAll(c => c.Item2 == tempUint);
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~REMCHL:" + tempUint);
-                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~REMCHL:" + tempUint);
+                                //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~REMCHL:" + tempUint);
+                                Message ansW = new Message("~REMCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
                                 string strListNum = string.Empty;
-                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                foreach (Pares<uint, uint> str in OnlineClient.l_onlineClients[position].L_channels)
                                 {
-                                    strListNum += str + ",";
+                                    strListNum += str.Item2 + ",";
                                 }
                                 Console.BackgroundColor = ConsoleColor.Green;
                                 Console.ForegroundColor = ConsoleColor.White;
@@ -144,11 +154,13 @@ namespace MUD_Skeleton.Server.Controllers
                             {
                                 /* No encuentra el canal o no existe */
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISNONCHL:" + tempUint);
-                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
+                                //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
+                                Message ansW = new Message("~ISNONCHL:" + tempUint);
+                                OnlineClient.l_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
                                 string strListNum = string.Empty;
-                                foreach (uint str in OnlineClient.l_onlineClients[position].l_channels)
+                                foreach (Pares<uint, uint> str in OnlineClient.l_onlineClients[position].L_channels)
                                 {
-                                    strListNum += str + ",";
+                                    strListNum += str.Item2 + ",";
                                 }
                                 Console.BackgroundColor = ConsoleColor.Green;
                                 Console.ForegroundColor = ConsoleColor.White;

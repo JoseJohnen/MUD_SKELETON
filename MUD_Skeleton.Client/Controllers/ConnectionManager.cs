@@ -1,6 +1,5 @@
-﻿using MUD_Skeleton.Commons.Comms;
-using System.Collections.Concurrent;
-using System.Reflection.PortableExecutable;
+﻿using MUD_Skeleton.Commons.Auxiliary;
+using MUD_Skeleton.Commons.Comms;
 using System.Threading.Channels;
 
 namespace MUD_Skeleton.Client.Controllers
@@ -12,8 +11,9 @@ namespace MUD_Skeleton.Client.Controllers
 
         public static string receivedMessage = string.Empty;
 
-        private static List<uint> l_channels = new List<uint>();
-        public static List<uint> L_channels
+        //N° de mensaje, Canal
+        private static List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
+        public static List<Pares<uint, uint>> L_channels
         {
             get
             {
@@ -75,12 +75,31 @@ namespace MUD_Skeleton.Client.Controllers
 
         public static async void ReadingChannelReceive()
         {
-            while (await ReaderReceive.WaitToReadAsync())
+            try
             {
-                string strTemp = await ReaderReceive.ReadAsync();
-                cq_instructionsReceived.Enqueue(strTemp);
-                Console.Out.WriteLine($"ReadingReceive {strTemp}");
-                Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
+                string tempString = string.Empty;
+                while (await ReaderReceive.WaitToReadAsync())
+                {
+                    string strTemp = await ReaderReceive.ReadAsync();
+                    tempString += strTemp.Trim();
+                    if(tempString.Contains("{") && tempString.Contains("}"))
+                    {
+                        tempString = tempString.Replace("\0\0", "").Trim();
+                        if (Message.IsValidMessage(tempString))
+                        {
+                            cq_instructionsReceived.Enqueue(tempString);
+                            tempString = string.Empty;
+                        }
+                    }
+                    Console.Out.WriteLine($"ReadingReceive {strTemp}");
+                    Console.Out.WriteLine($"ReadingReceive {tempString}");
+                    Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
+                    strTemp = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
             }
         }
 
@@ -129,12 +148,24 @@ namespace MUD_Skeleton.Client.Controllers
 
         public static async void ReadingChannelSend()
         {
+            string tempString = string.Empty;
             while (await ReaderSend.WaitToReadAsync())
             {
                 string strTemp = await ReaderSend.ReadAsync();
-                cq_instructionsToSend.Enqueue(strTemp);
+                tempString += strTemp.Trim();
+                if (tempString.Contains("{") && tempString.Contains("}"))
+                {
+                    cq_instructionsToSend.Enqueue(tempString);
+                    Console.BackgroundColor = ConsoleColor.Blue;
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
+                    Console.ResetColor();
+                    tempString = string.Empty;
+                }
                 Console.Out.WriteLine($"ReadingSend {strTemp}");
+                Console.Out.WriteLine($"ReadingSend {tempString}");
                 Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
+                strTemp = string.Empty;
             }
         }
         #endregion
@@ -169,9 +200,9 @@ namespace MUD_Skeleton.Client.Controllers
                     case "~ADDCHL":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (!l_channels.Contains(tempUint))
+                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
                             {
-                                l_channels.Add(tempUint);
+                                l_channels.Add(new Pares<uint, uint>(0, tempUint));
                                 Console.Out.WriteLine("Canal " + tempUint + " Agregado");
                             }
                         }
@@ -179,10 +210,10 @@ namespace MUD_Skeleton.Client.Controllers
                     case "~REMCHL":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (l_channels.Contains(tempUint))
+                            if (l_channels.Contains(new Pares<uint, uint>(tempUint)))
                             {
-                                l_channels.Remove(tempUint);
-                                Console.Out.WriteLine("Canal "+tempUint+" Removido");
+                                l_channels.RemoveAll(c => c.Item2 == tempUint);
+                                Console.Out.WriteLine("Canal " + tempUint + " Removido");
                             }
                         }
                         break;
@@ -198,9 +229,9 @@ namespace MUD_Skeleton.Client.Controllers
                         Console.Out.WriteLine("Canal No existe o el cliente no se encuentra vinculado al mismo");
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (l_channels.Contains(tempUint))
+                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
                             {
-                                l_channels.Remove(tempUint);
+                                l_channels.RemoveAll(c => c.Item2 == tempUint);
                             }
                         }
                         break;
@@ -213,9 +244,9 @@ namespace MUD_Skeleton.Client.Controllers
                         break;
                 }
                 string strListNum = string.Empty;
-                foreach (uint str in ConnectionManager.l_channels)
+                foreach (Pares<uint, uint> str in ConnectionManager.l_channels)
                 {
-                    strListNum += str + ",";
+                    strListNum += str.Item2 + ",";
                 }
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.White;

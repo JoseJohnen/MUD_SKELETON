@@ -160,15 +160,23 @@ namespace MUD_Skeleton.Server
                         return;
                     }
 
-                    onlineClient.bytesRead = clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.Buffer.Length);
+                    //onlineClient.bytesRead = clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.Buffer.Length);
+                    clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.bytesRead);
                     if (onlineClient.bytesRead == 0)
                     {
                         //break; // Client disconnected
                         return; // Client disconnected
                     }
 
+                    Console.Out.WriteLine("ByteRead: "+onlineClient.bytesRead);
+                    Console.Out.WriteLine("Buffer: " + System.Text.Encoding.Default.GetString(onlineClient.Buffer));
+                    Console.Out.WriteLine("Buffer Lenght: " + System.Text.Encoding.Default.GetString(onlineClient.Buffer).Length);
                     //Reading the message . . . And publishing in console to be read
                     string receivedMessage = Encoding.ASCII.GetString(onlineClient.Buffer, 0, onlineClient.bytesRead);
+                    
+                    //--Cleaning the buffer-- Thanks to the Channel<T> we can totally use a byte[1] to clean BUT we better use
+                    //the last size i thing
+                    onlineClient.Buffer = new byte[onlineClient.bytesRead];
                     Console.WriteLine("Received from client: " + receivedMessage);
                     onlineClient.WriterReceive.WriteAsync(receivedMessage);
                     //onlineClient.L_ReceiveQueueMessages.Enqueue(receivedMessage);

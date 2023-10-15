@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using MUD_Skeleton.Commons.Auxiliary;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -70,12 +71,24 @@ namespace MUD_Skeleton.Commons.Comms
 
         public async void ReadingChannelReceive()
         {
+            string tempString = string.Empty;
             while (await ReaderReceive.WaitToReadAsync())
             {
                 string strTemp = await ReaderReceive.ReadAsync();
-                l_ReceiveQueueMessages.Enqueue(strTemp);
+                tempString += strTemp.Trim();
+                if (tempString.Contains("{") && tempString.Contains("}"))
+                {
+                    tempString = tempString.Replace("\0\0", "").Trim();
+                    if(Message.IsValidMessage(tempString))
+                    {
+                        l_ReceiveQueueMessages.Enqueue(tempString);
+                        tempString = string.Empty;
+                    }
+                }
                 Console.Out.WriteLine($"ReadingReceive {strTemp}");
+                Console.Out.WriteLine($"ReadingReceive {tempString}");
                 Console.Out.WriteLine($"ReadingReceive {l_ReceiveQueueMessages.Count}");
+                strTemp = string.Empty;
             }
         }
 
@@ -124,12 +137,24 @@ namespace MUD_Skeleton.Commons.Comms
 
         public async void ReadingChannelSend()
         {
+            string tempString = string.Empty;
             while (await ReaderSend.WaitToReadAsync())
             {
                 string strTemp = await ReaderSend.ReadAsync();
-                l_SendQueueMessages.Enqueue(strTemp);
+                tempString += strTemp.Trim();
+                if(tempString.Contains("{") && tempString.Contains("}"))
+                {
+                    l_SendQueueMessages.Enqueue(strTemp);
+                    Console.BackgroundColor = ConsoleColor.Blue;
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
+                    Console.ResetColor();
+                    tempString = string.Empty;
+                }
                 Console.Out.WriteLine($"ReadingSend {strTemp}");
+                Console.Out.WriteLine($"ReadingSend {tempString}");
                 Console.Out.WriteLine($"ReadingSend {l_SendQueueMessages.Count}");
+                strTemp = string.Empty;
             }
         }
         #endregion
@@ -141,14 +166,28 @@ namespace MUD_Skeleton.Commons.Comms
         public TcpClient clientToServerClient;
         public TcpClient serverToClientClient;
 
-        public List<uint> l_channels = new List<uint>();
+        private List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
+        public List<Pares<uint, uint>> L_channels
+        {
+            get 
+            { 
+                return l_channels; 
+            }
+            set 
+            { 
+                l_channels = value; 
+            }
+        }
 
         public int bytesRead = 0;
-
         private byte[] buffer = new byte[1024];
         public byte[] Buffer
         {
-            get => buffer;
+            get
+            {
+                bytesRead = buffer.Length;
+                return buffer;
+            }
             set
             {
                 buffer = value;
@@ -235,9 +274,6 @@ namespace MUD_Skeleton.Commons.Comms
             }
             set => l_ReceiveQueueMessages = value;
         }
-
-
-
         #endregion
         #endregion
 

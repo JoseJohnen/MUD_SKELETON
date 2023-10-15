@@ -1,5 +1,6 @@
 ﻿using MUD_Skeleton.Client.Controllers;
 using MUD_Skeleton.Commons.Auxiliary;
+using MUD_Skeleton.Commons.Comms;
 using System.Net.Sockets;
 using System.Text;
 
@@ -48,7 +49,8 @@ namespace MUD_Skeleton.Client
                     externalMessage = Console.ReadLine();
                     if (!string.IsNullOrWhiteSpace(externalMessage))
                     {
-                        ConnectionManager.WriterSend.WriteAsync(externalMessage);
+                        Message Mandar = new Message(externalMessage);
+                        ConnectionManager.WriterSend.WriteAsync(Mandar.ToJson());
                         //ConnectionManager.cq_instructionsToSend.Enqueue(externalMessage);
                         externalMessage = string.Empty;
                     }
