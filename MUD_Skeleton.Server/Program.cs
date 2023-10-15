@@ -113,7 +113,7 @@ namespace MUD_Skeleton.Server
                         if (onlineClient.serverToClientClient.Connected != false)
                         {
                             NetworkStream clientStream = onlineClient.serverToClientClient.GetStream();
-                            clientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
+                            clientStream.Write(onlineClient.BufferSend, 0, onlineClient.bytesLengthSend);
                         }
                         else
                         {
@@ -161,22 +161,22 @@ namespace MUD_Skeleton.Server
                     }
 
                     //onlineClient.bytesRead = clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.Buffer.Length);
-                    clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.bytesRead);
-                    if (onlineClient.bytesRead == 0)
+                    clientToServerStream.Read(onlineClient.BufferReceive, 0, onlineClient.bytesLengthReceive);
+                    if (onlineClient.bytesLengthReceive == 0)
                     {
                         //break; // Client disconnected
                         return; // Client disconnected
                     }
 
-                    Console.Out.WriteLine("ByteRead: "+onlineClient.bytesRead);
-                    Console.Out.WriteLine("Buffer: " + System.Text.Encoding.Default.GetString(onlineClient.Buffer));
-                    Console.Out.WriteLine("Buffer Lenght: " + System.Text.Encoding.Default.GetString(onlineClient.Buffer).Length);
+                    Console.Out.WriteLine("ByteRead: "+onlineClient.bytesLengthSend);
+                    Console.Out.WriteLine("BufferReceive: " + System.Text.Encoding.Default.GetString(onlineClient.BufferReceive));
+                    Console.Out.WriteLine("Buffer Lenght: " + System.Text.Encoding.Default.GetString(onlineClient.BufferReceive).Length);
                     //Reading the message . . . And publishing in console to be read
-                    string receivedMessage = Encoding.ASCII.GetString(onlineClient.Buffer, 0, onlineClient.bytesRead);
+                    string receivedMessage = Encoding.ASCII.GetString(onlineClient.BufferReceive, 0, onlineClient.bytesLengthReceive);
                     
                     //--Cleaning the buffer-- Thanks to the Channel<T> we can totally use a byte[1] to clean BUT we better use
                     //the last size i thing
-                    onlineClient.Buffer = new byte[onlineClient.bytesRead];
+                    onlineClient.BufferReceive = new byte[onlineClient.bytesLengthReceive];
                     Console.WriteLine("Received from client: " + receivedMessage);
                     onlineClient.WriterReceive.WriteAsync(receivedMessage);
                     //onlineClient.L_ReceiveQueueMessages.Enqueue(receivedMessage);

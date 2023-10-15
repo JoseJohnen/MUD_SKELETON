@@ -179,30 +179,46 @@ namespace MUD_Skeleton.Commons.Comms
             }
         }
 
-        public int bytesRead = 0;
-        private byte[] buffer = new byte[1024];
-        public byte[] Buffer
+        public int bytesLengthSend = 0;
+        private byte[] bufferSend = new byte[1024];
+        public byte[] BufferSend
         {
             get
             {
-                bytesRead = buffer.Length;
-                return buffer;
+                bytesLengthSend = bufferSend.Length;
+                return bufferSend;
             }
             set
             {
-                buffer = value;
-                bytesRead = buffer.Length;
+                bufferSend = value;
+                bytesLengthSend = bufferSend.Length;
+            }
+        }
+
+        public int bytesLengthReceive = 0;
+        private byte[] bufferReceive = new byte[1024];
+        public byte[] BufferReceive
+        {
+            get
+            {
+                bytesLengthReceive = bufferReceive.Length;
+                return bufferReceive;
+            }
+            set
+            {
+                bufferReceive = value;
+                bytesLengthReceive = bufferReceive.Length;
             }
         }
         public string Information
         {
             get
             {
-                return Encoding.ASCII.GetString(Buffer);
+                return Encoding.ASCII.GetString(BufferSend);
             }
             set
             {
-                Buffer = Encoding.ASCII.GetBytes(value);
+                BufferSend = Encoding.ASCII.GetBytes(value);
             }
         }
         #endregion
