@@ -122,12 +122,12 @@ namespace MUD_Skeleton.Commons.Comms
             Status = StatusMessage.NonRelevantUsage;
         }
 
-        private Message(uint idOfChl, string text)
+        public Message(uint idOfChl, string text)
         {
             IdMsg = 0;
             Text = text;
-            Status = StatusMessage.NonRelevantUsage;
             IdChl = idOfChl;
+            Status = StatusMessage.NonRelevantUsage;
         }
         #endregion
 
@@ -210,7 +210,7 @@ namespace MUD_Skeleton.Commons.Comms
                     return false;
                 }*/
                 if (!jsonMsg.Contains("IdChl"))
-                { 
+                {
                     return false;
                 }
                 if (!jsonMsg.Contains("IdMsg"))
@@ -233,6 +233,28 @@ namespace MUD_Skeleton.Commons.Comms
                 return false;
             }
         }
+
+        public static uint ObtainChannelFromMessageJSON(string messageJsonified)
+        {
+            try
+            {
+                string tempStr = messageJsonified.Substring(messageJsonified.IndexOf("IdChl"));
+                string tempStr1 = tempStr.Substring(tempStr.IndexOf(":") + 1);
+                string tempStr2 = tempStr1.Substring(0, tempStr1.IndexOf(","));
+
+                if(uint.TryParse(tempStr2, out uint value))
+                {
+                    return value;
+                }
+
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR ObtainChannelFromMessageJSON: "+ex.Message);
+                return 0;
+            }
+        }
         #endregion
 
         #region JSON
@@ -252,7 +274,7 @@ namespace MUD_Skeleton.Commons.Comms
 
         public Message FromJson(string Text)
         {
-            string txt = Text.Replace("\0\0", "").Replace("}\0","}");
+            string txt = Text.Replace("\0\0", "").Replace("}\0", "}");
             try
             {
                 //txt = UtilityAssistant.CleanJSON(txt.Replace("\u002B", "+"));
@@ -356,15 +378,15 @@ namespace MUD_Skeleton.Commons.Comms
 
         public bool Equals(Message x, Message y)
         {
-            return x.IdMsg == y.IdMsg 
-                && x.text == y.text 
+            return x.IdMsg == y.IdMsg
+                && x.text == y.text
                 && x.IdChl == y.IdChl;
         }
 
         public int GetHashCode(Message obj)
         {
-            return obj.IdMsg.GetHashCode() 
-                ^ obj.text.GetHashCode() 
+            return obj.IdMsg.GetHashCode()
+                ^ obj.text.GetHashCode()
                 ^ obj.IdChl.GetHashCode();
         }
     }

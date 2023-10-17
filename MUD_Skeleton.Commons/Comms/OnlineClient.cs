@@ -21,7 +21,14 @@ namespace MUD_Skeleton.Commons.Comms
          * 4) Adicionar Protección contra Idempotencia
          */
 
-        #region Channels Related
+
+        #region Channel (Msg) Related
+        private uint activeChl = 0;
+        public uint ActiveChl { get => activeChl; set => activeChl = value; }
+        #endregion
+
+        #region Channels (Thread) Related
+        public Dictionary<string, Thread> dic_threads = new Dictionary<string, Thread>();
         //IT does create "Back Pressure"
         //It will wait for space to be available in order to wait
         private BoundedChannelOptions options = new BoundedChannelOptions(255);

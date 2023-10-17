@@ -49,7 +49,7 @@ namespace MUD_Skeleton.Client
                     externalMessage = Console.ReadLine();
                     if (!string.IsNullOrWhiteSpace(externalMessage))
                     {
-                        Message Mandar = new Message(externalMessage);
+                        Message Mandar = new Message(ConnectionManager.ActiveChl, externalMessage);
                         ConnectionManager.WriterSend.WriteAsync(Mandar.ToJson());
                         //ConnectionManager.cq_instructionsToSend.Enqueue(externalMessage);
                         externalMessage = string.Empty;

@@ -15,7 +15,6 @@ namespace MUD_Skeleton.Server
         static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
         static OnlineClient onlineClient;
 
-        static Dictionary<string, Thread> dic_clientThreads = new Dictionary<string, Thread>();
         static Thread clientThread;
         #endregion
 
@@ -63,21 +62,7 @@ namespace MUD_Skeleton.Server
                     // Start a new thread to handle communication with the connected clients
                     //clientThread = new Thread(() => HandleClientCommunication(clientToServerClient, serverToClientClient));
                     //clientThread = new Thread(() => HandleClientCommunication(onlineClient));
-                    clientThread = new Thread(() => HandleClientSendCommunication(onlineClient));
-                    clientThread.Start();
-                    dic_clientThreads.Add(onlineClient.Name + "_SEND", clientThread);
-
-                    clientThread = new Thread(() => HandleClientReceiveCommunication(onlineClient));
-                    clientThread.Start();
-                    dic_clientThreads.Add(onlineClient.Name + "_RECEIVE", clientThread);
-
-                    clientThread = new Thread(() => onlineClient.ReadingChannelReceive());
-                    clientThread.Start();
-                    dic_clientThreads.Add(onlineClient.Name + "_READCHANNELRECEIVE", clientThread);
-
-                    clientThread = new Thread(() => onlineClient.ReadingChannelSend());
-                    clientThread.Start();
-                    dic_clientThreads.Add(onlineClient.Name + "_READCHANNELSEND", clientThread);
+                    ThreadDefinition(onlineClient);
                 }
 
                 ////Start handling communication
@@ -87,6 +72,25 @@ namespace MUD_Skeleton.Server
             {
                 Console.WriteLine("Error: " + ex.ToString());
             }
+        }
+
+        static void ThreadDefinition(OnlineClient onlineClient)
+        {
+            clientThread = new Thread(() => HandleClientSendCommunication(onlineClient));
+            clientThread.Start();
+            onlineClient.dic_threads.Add(onlineClient.Name + "_SEND", clientThread);
+
+            clientThread = new Thread(() => HandleClientReceiveCommunication(onlineClient));
+            clientThread.Start();
+            onlineClient.dic_threads.Add(onlineClient.Name + "_RECEIVE", clientThread);
+
+            clientThread = new Thread(() => onlineClient.ReadingChannelReceive());
+            clientThread.Start();
+            onlineClient.dic_threads.Add(onlineClient.Name + "_READCHANNELRECEIVE", clientThread);
+
+            clientThread = new Thread(() => onlineClient.ReadingChannelSend());
+            clientThread.Start();
+            onlineClient.dic_threads.Add(onlineClient.Name + "_READCHANNELSEND", clientThread);
         }
 
         static void HandleClientSendCommunication(OnlineClient onlineClient)
@@ -106,6 +110,7 @@ namespace MUD_Skeleton.Server
                     //    Console.WriteLine("client: " + onlineClient.Name);
                     //    //if (client != onlineClient)
                     //    //{
+
                     while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
                     {
                         //Esto deja preparado el Buffer para ser consumido

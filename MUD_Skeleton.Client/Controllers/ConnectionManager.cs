@@ -11,6 +11,9 @@ namespace MUD_Skeleton.Client.Controllers
 
         public static string receivedMessage = string.Empty;
 
+        private static uint activeChl = 0;
+        public static uint ActiveChl { get => activeChl; set => activeChl = value; }
+
         //N° de mensaje, Canal
         private static List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
         public static List<Pares<uint, uint>> L_channels
@@ -82,7 +85,7 @@ namespace MUD_Skeleton.Client.Controllers
                 {
                     string strTemp = await ReaderReceive.ReadAsync();
                     tempString += strTemp.Trim();
-                    if(tempString.Contains("{") && tempString.Contains("}"))
+                    if (tempString.Contains("{") && tempString.Contains("}"))
                     {
                         tempString = tempString.Replace("\0\0", "").Trim();
                         if (Message.IsValidMessage(tempString))
@@ -171,16 +174,20 @@ namespace MUD_Skeleton.Client.Controllers
         #endregion
 
 
-        public static string ProcessDataFromServer(string tmpString)
+        public static string ProcessDataFromServer(string data)
         {
             try
             {
                 /*
                  * Do Some Cleaning-Preparing-Decrypting magic here
                  */
+                Message msg = Message.CreateFromJson(data);
+
+                string tmpString = msg.TextOriginal;
                 string itm = tmpString;
                 string content = string.Empty;
                 string[] arrStr;
+
                 if (tmpString.Contains("~"))
                 {
                     arrStr = tmpString.Split(":", StringSplitOptions.RemoveEmptyEntries);
@@ -191,34 +198,86 @@ namespace MUD_Skeleton.Client.Controllers
                 uint tempUint = 0;
                 switch (itm)
                 {
-                    case "MV:":
-                        /*
+                    /*case "MV":
+                         *
                          * Do Something Specific and return a response to the user
                          * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
-                         */
-                        break;
-                    case "~ADDCHL":
+                         *
+                        break; */
+                    case "~ACHL":
                         if (uint.TryParse(content, out tempUint))
                         {
                             if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
                             {
-                                l_channels.Add(new Pares<uint, uint>(0, tempUint));
-                                Console.Out.WriteLine("Canal " + tempUint + " Agregado");
+                                ActiveChl = tempUint;
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLine("Canal " + tempUint + " Es el nuevo canal activo");
+                                Console.ResetColor();
+                            }
+                            else if (ActiveChl == tempUint)
+                            {
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLine("Canal " + tempUint + " Es Ya el Canal Activo");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLine("Canal " + tempUint + " no esta en la lista de canales vinculados");
+                                Console.ResetColor();
                             }
                         }
+                        return string.Empty;
+                        break;
+                    case "~ADDCHL":
+                        if (uint.TryParse(content, out tempUint))
+                        {
+                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count == 0 && ActiveChl != tempUint)
+                            {
+                                l_channels.Add(new Pares<uint, uint>(0, tempUint));
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLine("Canal " + tempUint + " Agregado");
+                                Console.ResetColor();
+                            }
+                        }
+                        return string.Empty;
                         break;
                     case "~REMCHL":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (l_channels.Contains(new Pares<uint, uint>(tempUint)))
+                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
                             {
                                 l_channels.RemoveAll(c => c.Item2 == tempUint);
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
                                 Console.Out.WriteLine("Canal " + tempUint + " Removido");
+                                Console.ResetColor();
                             }
                         }
+                        return string.Empty;
                         break;
                     case "~ISPRSNTCHL":
                         /* Para que se evite volver a enviar en caso de que se automatice en algún punto el auto-enviado */
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Out.WriteLine("Canal Ya Presente En Servidor, Agregando si es que falta en la lista local . . .");
+                        Console.ResetColor();
+                        if (uint.TryParse(content, out tempUint))
+                        {
+                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count == 0)
+                            {
+                                l_channels.Add(new Pares<uint, uint>(0, tempUint));
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLine("Canal " + tempUint + " Agregado");
+                                Console.ResetColor();
+                            }
+                        }
+                        return string.Empty;
                         break;
                     case "~ISNONCHL":
                         /* Para decir que esta acción fue innecesaria pues el canal no existe/no esta registrado por el lado del server*/
@@ -226,7 +285,10 @@ namespace MUD_Skeleton.Client.Controllers
                          * Igual es buena idea dado el caso de eliminar el canal por el lado del cliente para sincronizar las listas 
                          * Dado el caso que sea necesario
                          */
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
                         Console.Out.WriteLine("Canal No existe o el cliente no se encuentra vinculado al mismo");
+                        Console.ResetColor();
                         if (uint.TryParse(content, out tempUint))
                         {
                             if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
@@ -234,6 +296,7 @@ namespace MUD_Skeleton.Client.Controllers
                                 l_channels.RemoveAll(c => c.Item2 == tempUint);
                             }
                         }
+                        return string.Empty;
                         break;
                     default:
                         /* 
@@ -244,9 +307,13 @@ namespace MUD_Skeleton.Client.Controllers
                         break;
                 }
                 string strListNum = string.Empty;
-                foreach (Pares<uint, uint> str in ConnectionManager.l_channels)
+                for (int i = 0; i < ConnectionManager.l_channels.Count; i++)
                 {
-                    strListNum += str.Item2 + ",";
+                    strListNum += ConnectionManager.l_channels[i].Item2;
+                    if (i < (ConnectionManager.l_channels.Count-1))
+                    {
+                        strListNum += ",";
+                    }
                 }
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.White;
