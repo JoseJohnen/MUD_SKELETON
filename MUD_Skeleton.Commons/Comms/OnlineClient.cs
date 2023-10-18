@@ -88,13 +88,13 @@ namespace MUD_Skeleton.Commons.Comms
                     tempString = tempString.Replace("\0\0", "").Trim();
                     if (Message.IsValidMessage(tempString))
                     {
-                        l_ReceiveQueueMessages.Enqueue(tempString);
+                        L_ReceiveQueueMessages.Enqueue(tempString);
                         tempString = string.Empty;
                     }
                 }
                 Console.Out.WriteLine($"ReadingReceive {strTemp}");
                 Console.Out.WriteLine($"ReadingReceive {tempString}");
-                Console.Out.WriteLine($"ReadingReceive {l_ReceiveQueueMessages.Count}");
+                Console.Out.WriteLine($"ReadingReceive {L_ReceiveQueueMessages.Count}");
                 strTemp = string.Empty;
             }
         }
@@ -151,7 +151,7 @@ namespace MUD_Skeleton.Commons.Comms
                 tempString += strTemp.Trim();
                 if (tempString.Contains("{") && tempString.Contains("}"))
                 {
-                    l_SendQueueMessages.Enqueue(strTemp);
+                    L_SendQueueMessages.Enqueue(strTemp);
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
@@ -160,7 +160,7 @@ namespace MUD_Skeleton.Commons.Comms
                 }
                 Console.Out.WriteLine($"ReadingSend {strTemp}");
                 Console.Out.WriteLine($"ReadingSend {tempString}");
-                Console.Out.WriteLine($"ReadingSend {l_SendQueueMessages.Count}");
+                Console.Out.WriteLine($"ReadingSend {L_SendQueueMessages.Count}");
                 strTemp = string.Empty;
             }
         }
@@ -182,6 +182,7 @@ namespace MUD_Skeleton.Commons.Comms
                         if (l_onlineClients.Where(c => c.Name == oClte.Name).Count() == 0)
                         {
                             l_onlineClients.Add(oClte);
+                            Console.Out.WriteLine("L_onlineClients: agregado "+oClte.Name);
                         }
                     }
                 }
@@ -287,14 +288,14 @@ namespace MUD_Skeleton.Commons.Comms
         #endregion
 
         #region Data Instructions Administration
-        private Queue<string> l_SendQueueMessages;
-        public Queue<string> L_SendQueueMessages
+        private ConcurrentQueue<string> l_SendQueueMessages = null;
+        public ConcurrentQueue<string> L_SendQueueMessages
         {
             get
             {
                 if (l_SendQueueMessages == null)
                 {
-                    l_SendQueueMessages = new Queue<string>();
+                    l_SendQueueMessages = new ConcurrentQueue<string>();
                 }
                 /*else if (l_SendQueueMessages.Count() == 0)
                 {
@@ -305,14 +306,14 @@ namespace MUD_Skeleton.Commons.Comms
             set => l_SendQueueMessages = value;
         }
 
-        private Queue<string> l_ReceiveQueueMessages;
-        public Queue<string> L_ReceiveQueueMessages
+        private ConcurrentQueue<string> l_ReceiveQueueMessages = null;
+        public ConcurrentQueue<string> L_ReceiveQueueMessages
         {
             get
             {
                 if (l_ReceiveQueueMessages == null)
                 {
-                    l_ReceiveQueueMessages = new Queue<string>();
+                    l_ReceiveQueueMessages = new ConcurrentQueue<string>();
                 }
                 /*else if (l_ReceiveQueueMessages.Count() == 0)
                 {

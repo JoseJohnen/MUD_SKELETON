@@ -20,17 +20,22 @@ namespace MUD_Skeleton.Client
 
         static string externalMessage = "hello server";
         static int activeThreads = 0;
+        static string name = string.Empty;
 
         static Dictionary<string, Trios<TypeOfMethod, TcpClient, int>> dic_use_typeOfMethode = new Dictionary<string, Trios<TypeOfMethod, TcpClient, int>>()
         {
             ["clientThreadSend"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientSendCommunication, null, 12345),
-            ["clientThreadReceive"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientReceiveCommunication, null, 12346)
+            ["clientThreadReceive"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientReceiveCommunication, null, 12345)
         };
 
         static void Main()
         {
             try
             {
+                //TODO: Here comes random name, it should be something more stable, but will be random for now because of testing purposes
+                Random rand = new Random();
+                name = rand.Next(1000000, 10000000).ToString();
+
                 //Prepare client for connections and uses
                 Controller.Controller_Start();
 
@@ -71,36 +76,54 @@ namespace MUD_Skeleton.Client
         {
             try
             {
+                string messageId = string.Empty;
+                bool nameWasSended = false;
                 do
                 {
                     /*if (string.IsNullOrWhiteSpace(externalMessage))
                     {
                         externalMessage = Console.ReadLine();
                     }*/
-                    string messageId = string.Empty;
+
                     foreach (KeyValuePair<string, Trios<TypeOfMethod, TcpClient, int>> item in dic_use_typeOfMethode.Reverse())
                     {
-                        while (l_clientThreads.Where(c => c.Item1 == item.Key).ToList().Count == 0)
+                        NetworkStream clientToServerStream = null;
+
+                        if (l_clientThreads.Where(c => c.Item1 == item.Key).ToList().Count == 0)
                         {
                             // Connect to the server's client-to-server port
                             item.Value.Item2 = new TcpClient(serverIp, item.Value.Item3);
+                            clientToServerStream = item.Value.Item2.GetStream();
 
                             if (item.Value.Item1 == TypeOfMethod.HandleClientSendCommunication)
                             {
                                 l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientSendCommunication(item.Value.Item2))));
-                                messageId = "Client-To-Server";
+                                messageId = "Client-To-Server+";
+                                byte[] data = Encoding.ASCII.GetBytes(messageId);
+                                clientToServerStream.Write(data, 0, data.Length);
                             }
-                            else
+                            else if (item.Value.Item1 == TypeOfMethod.HandleClientReceiveCommunication)
                             {
                                 l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientReceiveCommunication(item.Value.Item2))));
-                                messageId = "Server-To-Client";
+                                messageId = "Server-To-Client+";
+                                byte[] data = Encoding.ASCII.GetBytes(messageId);
+                                clientToServerStream.Write(data, 0, data.Length);
                             }
 
                             l_clientThreads.Where(c => c.Item1 == item.Key).First().Item2.Start();
+                        }
 
-                            NetworkStream clientToServerStream = item.Value.Item2.GetStream();
-                            byte[] data = Encoding.ASCII.GetBytes(messageId);
-                            clientToServerStream.Write(data, 0, data.Length);
+                        if (clientToServerStream != null)
+                        {
+                            if (!nameWasSended)
+                            {
+                                //TODO: Change the name for the login name + Motherboard + Process + Mac or something like that
+                                //For now, it would be a randomized value randomized outside of this
+                                messageId = "NAME:" + name;
+
+                                byte[] dataName = Encoding.ASCII.GetBytes(messageId);
+                                clientToServerStream.Write(dataName, 0, dataName.Length);
+                            }
                         }
                     }
 
