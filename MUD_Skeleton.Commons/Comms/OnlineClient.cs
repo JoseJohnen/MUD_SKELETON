@@ -65,13 +65,13 @@ namespace MUD_Skeleton.Commons.Comms
         private ChannelReader<string> readerReceive = null;
         public ChannelReader<string> ReaderReceive
         {
-            get 
+            get
             {
-                if(readerReceive == null)
+                if (readerReceive == null)
                 {
                     readerReceive = ChannelReceive.Reader;
                 }
-                return readerReceive; 
+                return readerReceive;
             }
             set => readerReceive = value;
         }
@@ -86,7 +86,7 @@ namespace MUD_Skeleton.Commons.Comms
                 if (tempString.Contains("{") && tempString.Contains("}"))
                 {
                     tempString = tempString.Replace("\0\0", "").Trim();
-                    if(Message.IsValidMessage(tempString))
+                    if (Message.IsValidMessage(tempString))
                     {
                         l_ReceiveQueueMessages.Enqueue(tempString);
                         tempString = string.Empty;
@@ -149,7 +149,7 @@ namespace MUD_Skeleton.Commons.Comms
             {
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
-                if(tempString.Contains("{") && tempString.Contains("}"))
+                if (tempString.Contains("{") && tempString.Contains("}"))
                 {
                     l_SendQueueMessages.Enqueue(strTemp);
                     Console.BackgroundColor = ConsoleColor.Blue;
@@ -166,7 +166,32 @@ namespace MUD_Skeleton.Commons.Comms
         }
         #endregion
 
-        public static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
+        public static ConcurrentQueue<OnlineClient> cq_tcpOnlineClientsReceived = new ConcurrentQueue<OnlineClient>();
+
+        private static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
+        public static List<OnlineClient> L_onlineClients
+        {
+            get
+            {
+                OnlineClient oClte = null;
+                while (cq_tcpOnlineClientsReceived.TryDequeue(out oClte))
+                //foreach (OnlineClient client in cq_tcpOnlineClientsReceived)
+                {
+                    if (oClte != null)
+                    {
+                        if (l_onlineClients.Where(c => c.Name == oClte.Name).Count() == 0)
+                        {
+                            l_onlineClients.Add(oClte);
+                        }
+                    }
+                }
+                return l_onlineClients;
+            }
+            set
+            {
+                l_onlineClients = value;
+            }
+        }
 
         #region Attributes
         #region Functional
@@ -176,13 +201,13 @@ namespace MUD_Skeleton.Commons.Comms
         private List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
         public List<Pares<uint, uint>> L_channels
         {
-            get 
-            { 
-                return l_channels; 
+            get
+            {
+                return l_channels;
             }
-            set 
-            { 
-                l_channels = value; 
+            set
+            {
+                l_channels = value;
             }
         }
 
@@ -236,25 +261,25 @@ namespace MUD_Skeleton.Commons.Comms
         {
             get
             {
-                if (l_onlineClients == null)
+                if (L_onlineClients == null)
                 {
-                    l_onlineClients = new List<OnlineClient>();
+                    L_onlineClients = new List<OnlineClient>();
                 }
                 if (string.IsNullOrWhiteSpace(name))
                 {
-                    name = "_PROVISORY_"+l_onlineClients.Count.ToString();
+                    name = "_PROVISORY_" + L_onlineClients.Count.ToString();
                 }
                 return name;
             }
             set
             {
-                if (l_onlineClients == null)
+                if (L_onlineClients == null)
                 {
-                    l_onlineClients = new List<OnlineClient>();
+                    L_onlineClients = new List<OnlineClient>();
                 }
-                else if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
+                else if (L_onlineClients.Where(c => c.Name == name).Count() == 0)
                 {
-                    l_onlineClients.Add(this);
+                    L_onlineClients.Add(this);
                 }
                 name = value;
             }
@@ -311,13 +336,13 @@ namespace MUD_Skeleton.Commons.Comms
             ChannelSend = System.Threading.Channels.Channel.CreateBounded<string>(options);
             WriterSend = ChannelSend.Writer;
             ReaderSend = ChannelSend.Reader;
-            if (l_onlineClients == null)
+            if (L_onlineClients == null)
             {
-                l_onlineClients = new List<OnlineClient>();
+                L_onlineClients = new List<OnlineClient>();
             }
-            if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
+            if (L_onlineClients.Where(c => c.Name == name).Count() == 0)
             {
-                l_onlineClients.Add(this);
+                L_onlineClients.Add(this);
             }
         }
 
@@ -330,14 +355,14 @@ namespace MUD_Skeleton.Commons.Comms
             ChannelSend = System.Threading.Channels.Channel.CreateBounded<string>(options);
             WriterSend = ChannelSend.Writer;
             ReaderSend = ChannelSend.Reader;
-            if (l_onlineClients == null)
+            if (L_onlineClients == null)
             {
-                l_onlineClients = new List<OnlineClient>();
+                L_onlineClients = new List<OnlineClient>();
             }
-            if (l_onlineClients.Where(c => c.Name == name).Count() == 0)
-            {
-                l_onlineClients.Add(this);
-            }
+            //if (L_onlineClients.Where(c => c.Name == name).Count() == 0)
+            //{
+            //    L_onlineClients.Add(this);
+            //}
         }
         #endregion
 

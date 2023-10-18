@@ -12,7 +12,6 @@ namespace MUD_Skeleton.Client
     {
         static List<Pares<string, Thread>> l_clientThreads = new List<Pares<string, Thread>>();
 
-
         //static Thread clientThreadSend;
         //static Thread clientThreadReceive;
 
@@ -78,22 +77,30 @@ namespace MUD_Skeleton.Client
                     {
                         externalMessage = Console.ReadLine();
                     }*/
-
+                    string messageId = string.Empty;
                     foreach (KeyValuePair<string, Trios<TypeOfMethod, TcpClient, int>> item in dic_use_typeOfMethode.Reverse())
                     {
                         while (l_clientThreads.Where(c => c.Item1 == item.Key).ToList().Count == 0)
                         {
                             // Connect to the server's client-to-server port
                             item.Value.Item2 = new TcpClient(serverIp, item.Value.Item3);
+
                             if (item.Value.Item1 == TypeOfMethod.HandleClientSendCommunication)
                             {
                                 l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientSendCommunication(item.Value.Item2))));
+                                messageId = "Client-To-Server";
                             }
                             else
                             {
                                 l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientReceiveCommunication(item.Value.Item2))));
+                                messageId = "Server-To-Client";
                             }
+
                             l_clientThreads.Where(c => c.Item1 == item.Key).First().Item2.Start();
+
+                            NetworkStream clientToServerStream = item.Value.Item2.GetStream();
+                            byte[] data = Encoding.ASCII.GetBytes(messageId);
+                            clientToServerStream.Write(data, 0, data.Length);
                         }
                     }
 
