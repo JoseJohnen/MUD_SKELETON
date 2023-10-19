@@ -1,5 +1,7 @@
 ﻿using MUD_Skeleton.Commons.Auxiliary;
 using MUD_Skeleton.Commons.Comms;
+using System.Collections.Concurrent;
+using System.Linq;
 
 namespace MUD_Skeleton.Server.Controllers
 {
@@ -9,8 +11,6 @@ namespace MUD_Skeleton.Server.Controllers
         public static InputController Instance { get => instance; private set => instance = value; }
         private static Thread InputControllerRunning;
 
-        //private static ConcurrentDictionary<string, InputController> _a;
-
         public static void InputController_Start()
         {
             Instance = new InputController();
@@ -19,11 +19,11 @@ namespace MUD_Skeleton.Server.Controllers
             InputControllerRunning.Start();
         }
 
-        public static void InputController_Running()
+        public static async void InputController_Running()
         {
             while (true)
             {
-                string strInstruction = string.Empty;
+                //string strInstruction = string.Empty;
                 int i = 0;
 
                 if (OnlineClient.L_onlineClients.Count == 0)
@@ -31,10 +31,16 @@ namespace MUD_Skeleton.Server.Controllers
                     continue;
                 }
 
+                //bool shouldRun = true;
                 foreach (OnlineClient oNclt in OnlineClient.L_onlineClients.Reverse<OnlineClient>())
                 {
-                    while (oNclt.L_ReceiveQueueMessages.TryDequeue(out strInstruction))
+                    //while (await oNclt.ReaderReceiveProcess.WaitToReadAsync())
+                    //while (oNclt.L_ReceiveQueueMessages.TryDequeue(out strInstruction))
+                    //while ()
+                    foreach (string strInstruction in oNclt.L_ReceiveQueueMessages.GetConsumingEnumerable())
                     {
+                        //strInstruction = oNclt.L_ReceiveQueueMessages.Take()
+                        //strInstruction = await oNclt.ReaderReceiveProcess.ReadAsync();
                         if (!string.IsNullOrWhiteSpace(strInstruction))
                         {
                             Console.Out.WriteLine("strInstruction: " + strInstruction);
@@ -103,7 +109,7 @@ namespace MUD_Skeleton.Server.Controllers
                 uint ChlMsg = msg.IdChl;
 
                 /*** Dejo esto acá para finjir procesamiento dentro del switch***/
-                result = "RESULT: "+content;
+                result = "RESULT: " + content;
 
 
                 /*
@@ -116,7 +122,7 @@ namespace MUD_Skeleton.Server.Controllers
                 }
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.White;
-                Console.Out.WriteLine("Enviado "+result+" A todos los suscritos al canal "+ChlMsg);
+                Console.Out.WriteLine("Enviado " + result + " A todos los suscritos al canal " + ChlMsg);
                 Console.ResetColor();
 
                 return String.Empty;
@@ -167,11 +173,11 @@ namespace MUD_Skeleton.Server.Controllers
                 switch (itm)
                 {
                     //case "MV":
-                        /*
-                         * Do Something Specific and return a response to the user
-                         * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
-                         */
-                        //break;
+                    /*
+                     * Do Something Specific and return a response to the user
+                     * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
+                     */
+                    //break;
                     case "/ACHL":
                         if (uint.TryParse(content, out tempUint))
                         {

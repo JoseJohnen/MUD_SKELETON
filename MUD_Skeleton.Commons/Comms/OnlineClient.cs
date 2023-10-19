@@ -1,13 +1,11 @@
 ﻿using MUD_Skeleton.Commons.Auxiliary;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
-using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Channels;
 
 namespace MUD_Skeleton.Commons.Comms
 {
-
     public class OnlineClient
     {
         /*
@@ -21,13 +19,13 @@ namespace MUD_Skeleton.Commons.Comms
          * 4) Adicionar Protección contra Idempotencia
          */
 
-
         #region Channel (Msg) Related
         private uint activeChl = 0;
         public uint ActiveChl { get => activeChl; set => activeChl = value; }
         #endregion
 
-        #region Channels (Thread) Related
+        #region Channels (Thread & COMMs) Related
+        #region Shock absorbers
         public Dictionary<string, Thread> dic_threads = new Dictionary<string, Thread>();
         //IT does create "Back Pressure"
         //It will wait for space to be available in order to wait
@@ -88,7 +86,8 @@ namespace MUD_Skeleton.Commons.Comms
                     tempString = tempString.Replace("\0\0", "").Trim();
                     if (Message.IsValidMessage(tempString))
                     {
-                        L_ReceiveQueueMessages.Enqueue(tempString);
+                        L_ReceiveQueueMessages.Add(tempString);
+                        //WriterReceiveProcess.TryWrite(tempString);
                         tempString = string.Empty;
                     }
                 }
@@ -151,7 +150,8 @@ namespace MUD_Skeleton.Commons.Comms
                 tempString += strTemp.Trim();
                 if (tempString.Contains("{") && tempString.Contains("}"))
                 {
-                    L_SendQueueMessages.Enqueue(strTemp);
+                    //L_SendQueueMessages.Enqueue(strTemp);
+                    WriterSendProcess.TryWrite(strTemp);
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
@@ -165,7 +165,151 @@ namespace MUD_Skeleton.Commons.Comms
             }
         }
         #endregion
+        #region Distributers
+        //IT does create "Back Pressure"
+        //It will wait for space to be available in order to wait
+        private Channel<string> channelReceiveProcess = null;
+        public Channel<string> ChannelReceiveProcess
+        {
+            get
+            {
+                if (channelReceiveProcess == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelReceiveProcess = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelReceiveProcess;
+            }
+            set { channelReceiveProcess = value; }
+        }
 
+        private ChannelWriter<string> writerReceiveProcess = null;
+        public ChannelWriter<string> WriterReceiveProcess
+        {
+            get
+            {
+                if (writerReceiveProcess == null)
+                {
+                    writerReceiveProcess = ChannelReceiveProcess.Writer;
+                }
+                return writerReceiveProcess;
+            }
+            set => writerReceiveProcess = value;
+        }
+
+        private ChannelReader<string> readerReceiveProcess = null;
+        public ChannelReader<string> ReaderReceiveProcess
+        {
+            get
+            {
+                if (readerReceiveProcess == null)
+                {
+                    readerReceiveProcess = ChannelReceiveProcess.Reader;
+                }
+                return readerReceiveProcess;
+            }
+            set => readerReceiveProcess = value;
+        }
+
+        //public static async void ReadingChannelReceive()
+        //{
+        //    try
+        //    {
+        //        string tempString = string.Empty;
+        //        while (await ReaderReceive.WaitToReadAsync())
+        //        {
+        //            string strTemp = await ReaderReceive.ReadAsync();
+        //            tempString += strTemp.Trim();
+        //            if (tempString.Contains("{") && tempString.Contains("}"))
+        //            {
+        //                tempString = tempString.Replace("\0\0", "").Trim();
+        //                if (Message.IsValidMessage(tempString))
+        //                {
+        //                    cq_instructionsReceived.Enqueue(tempString);
+        //                    tempString = string.Empty;
+        //                }
+        //            }
+        //            Console.Out.WriteLine($"ReadingReceive {strTemp}");
+        //            Console.Out.WriteLine($"ReadingReceive {tempString}");
+        //            Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
+        //            strTemp = string.Empty;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
+        //    }
+        //}
+
+        private Channel<string> channelSendProcess = null;
+        public Channel<string> ChannelSendProcess
+        {
+            get
+            {
+                if (channelSendProcess == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelSendProcess = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelSendProcess;
+            }
+            set { channelSendProcess = value; }
+        }
+
+        private ChannelWriter<string> writerSendProcess = null;
+        public ChannelWriter<string> WriterSendProcess
+        {
+            get
+            {
+                if (writerSendProcess == null)
+                {
+                    writerSendProcess = ChannelSendProcess.Writer;
+                }
+                return writerSendProcess;
+            }
+            set => writerSendProcess = value;
+        }
+
+        private ChannelReader<string> readerSendProcess = null;
+        public ChannelReader<string> ReaderSendProcess
+        {
+            get
+            {
+                if (readerSendProcess == null)
+                {
+                    readerSendProcess = ChannelSendProcess.Reader;
+                }
+                return readerSendProcess;
+            }
+            set => readerSendProcess = value;
+        }
+
+        //public static async void ReadingChannelSend()
+        //{
+        //    string tempString = string.Empty;
+        //    while (await ReaderSend.WaitToReadAsync())
+        //    {
+        //        string strTemp = await ReaderSend.ReadAsync();
+        //        tempString += strTemp.Trim();
+        //        if (tempString.Contains("{") && tempString.Contains("}"))
+        //        {
+        //            cq_instructionsToSend.Enqueue(tempString);
+        //            Console.BackgroundColor = ConsoleColor.Blue;
+        //            Console.ForegroundColor = ConsoleColor.Yellow;
+        //            Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
+        //            Console.ResetColor();
+        //            tempString = string.Empty;
+        //        }
+        //        Console.Out.WriteLine($"ReadingSend {strTemp}");
+        //        Console.Out.WriteLine($"ReadingSend {tempString}");
+        //        Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
+        //        strTemp = string.Empty;
+        //    }
+        //}
+        #endregion
+        #endregion
+
+        #region Static Utilitary Attributes
         public static ConcurrentQueue<OnlineClient> cq_tcpOnlineClientsReceived = new ConcurrentQueue<OnlineClient>();
 
         private static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
@@ -193,6 +337,7 @@ namespace MUD_Skeleton.Commons.Comms
                 l_onlineClients = value;
             }
         }
+        #endregion
 
         #region Attributes
         #region Functional
@@ -306,14 +451,14 @@ namespace MUD_Skeleton.Commons.Comms
             set => l_SendQueueMessages = value;
         }
 
-        private ConcurrentQueue<string> l_ReceiveQueueMessages = null;
-        public ConcurrentQueue<string> L_ReceiveQueueMessages
+        private BlockingCollection<string> l_ReceiveQueueMessages = null;
+        public BlockingCollection<string> L_ReceiveQueueMessages
         {
             get
             {
                 if (l_ReceiveQueueMessages == null)
                 {
-                    l_ReceiveQueueMessages = new ConcurrentQueue<string>();
+                    l_ReceiveQueueMessages = new BlockingCollection<string>();
                 }
                 /*else if (l_ReceiveQueueMessages.Count() == 0)
                 {

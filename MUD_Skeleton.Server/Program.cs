@@ -340,12 +340,12 @@ namespace MUD_Skeleton.Server
             }
         }
 
-        static void HandleClientSendCommunication(OnlineClient onlineClient)
+        static async void HandleClientSendCommunication(OnlineClient onlineClient)
         {
             try
             {
                 //NetworkStream serverToClientStream = onlineClient.serverToClientClient.GetStream();
-                string instruction = string.Empty;
+                //string instruction = string.Empty;
                 while (true)
                 {
                     // Echo the received data back to the client using server-to-client connection
@@ -358,8 +358,10 @@ namespace MUD_Skeleton.Server
                     //    //if (client != onlineClient)
                     //    //{
 
-                    while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
+                    //while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
+                    while (await onlineClient.ReaderSendProcess.WaitToReadAsync())
                     {
+                        string instruction = await onlineClient.ReaderSendProcess.ReadAsync();
                         //Esto deja preparado el Buffer para ser consumido
                         onlineClient.Information = instruction;
                         if (onlineClient.serverToClientClient.Connected != false)

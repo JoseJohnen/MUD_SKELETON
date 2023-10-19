@@ -29,16 +29,18 @@ namespace MUD_Skeleton.Client.Controllers
             ReadingChannelSend.Start();
         }
 
-        public static void Controller_Running()
+        public static async void Controller_Running()
         {
             while (true)
             {
                 string tmpString = string.Empty;
                 string strInstruction = string.Empty;
-                if (ConnectionManager.cq_instructionsReceived.Count > 0)
-                {
-                    while (ConnectionManager.cq_instructionsReceived.TryDequeue(out tmpString))
+                //if (ConnectionManager.cq_instructionsReceived.Count > 0)
+                //{
+                    //while (ConnectionManager.cq_instructionsReceived.TryDequeue(out tmpString))
+                    while (await ConnectionManager.ReaderReceiveProcess.WaitToReadAsync())
                     {
+                        tmpString = await ConnectionManager.ReaderReceiveProcess.ReadAsync();
                         if (!string.IsNullOrWhiteSpace(tmpString))
                         {
                             strInstruction = ConnectionManager.ProcessDataFromServer(tmpString);
@@ -48,7 +50,7 @@ namespace MUD_Skeleton.Client.Controllers
                             }
                         }
                     }
-                }
+                //}
             }
         }
 

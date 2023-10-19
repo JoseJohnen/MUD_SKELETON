@@ -6,6 +6,7 @@ namespace MUD_Skeleton.Client.Controllers
 {
     public static class ConnectionManager
     {
+        #region Static Utilitary Attributes
         public static Queue<string> cq_instructionsToSend = new Queue<string>();
         public static Queue<string> cq_instructionsReceived = new Queue<string>();
 
@@ -27,8 +28,10 @@ namespace MUD_Skeleton.Client.Controllers
                 l_channels = value;
             }
         }
+        #endregion
 
         #region Channels Related
+        #region Shock absorbers
         //IT does create "Back Pressure"
         //It will wait for space to be available in order to wait
         private static BoundedChannelOptions options = new BoundedChannelOptions(255);
@@ -90,7 +93,8 @@ namespace MUD_Skeleton.Client.Controllers
                         tempString = tempString.Replace("\0\0", "").Trim();
                         if (Message.IsValidMessage(tempString))
                         {
-                            cq_instructionsReceived.Enqueue(tempString);
+                            //cq_instructionsReceived.Enqueue(tempString);
+                            WriterReceiveProcess.WriteAsync(tempString);
                             tempString = string.Empty;
                         }
                     }
@@ -172,8 +176,151 @@ namespace MUD_Skeleton.Client.Controllers
             }
         }
         #endregion
+        #region Distributers
+        //IT does create "Back Pressure"
+        //It will wait for space to be available in order to wait
+        private static Channel<string> channelReceiveProcess = null;
+        public static Channel<string> ChannelReceiveProcess
+        {
+            get
+            {
+                if (channelReceiveProcess == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelReceiveProcess = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelReceiveProcess;
+            }
+            set { channelReceiveProcess = value; }
+        }
 
+        private static ChannelWriter<string> writerReceiveProcess = null;
+        public static ChannelWriter<string> WriterReceiveProcess
+        {
+            get
+            {
+                if (writerReceiveProcess == null)
+                {
+                    writerReceiveProcess = ChannelReceiveProcess.Writer;
+                }
+                return writerReceiveProcess;
+            }
+            set => writerReceiveProcess = value;
+        }
 
+        private static ChannelReader<string> readerReceiveProcess = null;
+        public static ChannelReader<string> ReaderReceiveProcess
+        {
+            get
+            {
+                if (readerReceiveProcess == null)
+                {
+                    readerReceiveProcess = ChannelReceiveProcess.Reader;
+                }
+                return readerReceiveProcess;
+            }
+            set => readerReceiveProcess = value;
+        }
+
+        //public static async void ReadingChannelReceive()
+        //{
+        //    try
+        //    {
+        //        string tempString = string.Empty;
+        //        while (await ReaderReceive.WaitToReadAsync())
+        //        {
+        //            string strTemp = await ReaderReceive.ReadAsync();
+        //            tempString += strTemp.Trim();
+        //            if (tempString.Contains("{") && tempString.Contains("}"))
+        //            {
+        //                tempString = tempString.Replace("\0\0", "").Trim();
+        //                if (Message.IsValidMessage(tempString))
+        //                {
+        //                    cq_instructionsReceived.Enqueue(tempString);
+        //                    tempString = string.Empty;
+        //                }
+        //            }
+        //            Console.Out.WriteLine($"ReadingReceive {strTemp}");
+        //            Console.Out.WriteLine($"ReadingReceive {tempString}");
+        //            Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
+        //            strTemp = string.Empty;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
+        //    }
+        //}
+
+        private static Channel<string> channelSendProcess = null;
+        public static Channel<string> ChannelSendProcess
+        {
+            get
+            {
+                if (channelSendProcess == null)
+                {
+                    options.FullMode = BoundedChannelFullMode.Wait;
+                    channelSendProcess = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                }
+                return channelSendProcess;
+            }
+            set { channelSendProcess = value; }
+        }
+
+        private static ChannelWriter<string> writerSendProcess = null;
+        public static ChannelWriter<string> WriterSendProcess
+        {
+            get
+            {
+                if (writerSendProcess == null)
+                {
+                    writerSendProcess = ChannelSendProcess.Writer;
+                 }
+                return writerSendProcess;
+            }
+            set => writerSendProcess = value;
+        }
+
+        private static ChannelReader<string> readerSendProcess = null;
+        public static ChannelReader<string> ReaderSendProcess
+        {
+            get
+            {
+                if (readerSendProcess == null)
+                {
+                    readerSendProcess = ChannelSendProcess.Reader;
+                }
+                return readerSendProcess;
+            }
+            set => readerSendProcess = value;
+        }
+
+        //public static async void ReadingChannelSend()
+        //{
+        //    string tempString = string.Empty;
+        //    while (await ReaderSend.WaitToReadAsync())
+        //    {
+        //        string strTemp = await ReaderSend.ReadAsync();
+        //        tempString += strTemp.Trim();
+        //        if (tempString.Contains("{") && tempString.Contains("}"))
+        //        {
+        //            cq_instructionsToSend.Enqueue(tempString);
+        //            Console.BackgroundColor = ConsoleColor.Blue;
+        //            Console.ForegroundColor = ConsoleColor.Yellow;
+        //            Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
+        //            Console.ResetColor();
+        //            tempString = string.Empty;
+        //        }
+        //        Console.Out.WriteLine($"ReadingSend {strTemp}");
+        //        Console.Out.WriteLine($"ReadingSend {tempString}");
+        //        Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
+        //        strTemp = string.Empty;
+        //    }
+        //}
+        #endregion
+        #endregion
+
+        #region Data Processing
         public static string ProcessDataFromServer(string data)
         {
             try
@@ -310,7 +457,7 @@ namespace MUD_Skeleton.Client.Controllers
                 for (int i = 0; i < ConnectionManager.l_channels.Count; i++)
                 {
                     strListNum += ConnectionManager.l_channels[i].Item2;
-                    if (i < (ConnectionManager.l_channels.Count-1))
+                    if (i < (ConnectionManager.l_channels.Count - 1))
                     {
                         strListNum += ",";
                     }
@@ -330,6 +477,7 @@ namespace MUD_Skeleton.Client.Controllers
                 return string.Empty;
             }
         }
+        #endregion
     }
 
 }
