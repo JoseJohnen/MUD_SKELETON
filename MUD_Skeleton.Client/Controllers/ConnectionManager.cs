@@ -30,6 +30,61 @@ namespace MUD_Skeleton.Client.Controllers
         }
         #endregion
 
+        #region Idempotency Protection
+        private static uint IdLastSendedId = 1;
+        private static uint IdLastReceivedId = 0;
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and then update such value with the one bringed by the parameter
+        /// </summary>
+        /// <param name="newLast">the new last id message, it will be registered but will just be returned in the next call of this function</param>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public static uint GetLastSendedIdMsg(out uint newLast)
+        {
+            uint a = IdLastSendedId;
+            newLast = IdLastSendedId++;
+            return a;
+        }
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and return it +1, 
+        /// </summary>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public static uint GetLastSendedIdMsg()
+        {
+            uint a = IdLastSendedId;
+            IdLastSendedId++;
+            return a;
+        }
+
+        /// <summary>
+        /// Get the last number received message registered and return it 
+        /// and register the current last id message passed in the parameter
+        /// </summary>
+        /// <param name="newLast">convert this number in the last number received from message registered, this number will be returned the next time this function is called</param>
+        /// <returns>the last number received message registered before this current call of the method</returns>
+        public static uint GetLastReceivedIdMsg(uint newLast)
+        {
+            uint n = IdLastReceivedId;
+            IdLastReceivedId = newLast;
+            return n;
+        }
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and then elevate it +1
+        /// </summary>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public static uint GetLastReceivedIdMsg()
+        {
+            uint n = IdLastReceivedId;
+            IdLastReceivedId++;
+            return n;
+        }
+        #endregion
+
         #region Channels Related
         #region Shock absorbers
         //IT does create "Back Pressure"
@@ -91,6 +146,14 @@ namespace MUD_Skeleton.Client.Controllers
                     if (tempString.Contains("{") && tempString.Contains("}"))
                     {
                         tempString = tempString.Replace("\0\0", "").Trim();
+                        uint idMsg = Message.GetIdMsgFromJson(tempString);
+                        //Si este mensaje id ya ha sido recibido en el pasado
+                        //(es decir si es menor o igual) entonces se ignora
+                        if(idMsg <= GetLastReceivedIdMsg(idMsg))
+                        {
+                            continue;
+                        }
+
                         if (Message.IsValidMessage(tempString))
                         {
                             //cq_instructionsReceived.Enqueue(tempString);
@@ -160,9 +223,12 @@ namespace MUD_Skeleton.Client.Controllers
             {
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
-                if (tempString.Contains("{") && tempString.Contains("}"))
+                //if (tempString.Contains("{") && tempString.Contains("}"))
+                if(!string.IsNullOrWhiteSpace(tempString))
                 {
-                    cq_instructionsToSend.Enqueue(tempString);
+                    Message Mandar = new Message(ConnectionManager.ActiveChl, tempString);
+                    Mandar.IdMsg = GetLastSendedIdMsg();
+                    cq_instructionsToSend.Enqueue(Mandar.ToJson());
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");

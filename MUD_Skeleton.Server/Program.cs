@@ -319,8 +319,6 @@ namespace MUD_Skeleton.Server
                                 }
                             }
                         }
-
-
                     }
 
                     Console.Out.WriteLine("Initial Socket, Received from server: " + receivedMessage);

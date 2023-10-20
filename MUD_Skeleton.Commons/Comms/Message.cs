@@ -234,11 +234,34 @@ namespace MUD_Skeleton.Commons.Comms
             }
         }
 
-        public static uint ObtainChannelFromMessageJSON(string messageJsonified)
+        public static uint GetIdMsgFromJson(string jsonMsg)
         {
             try
             {
-                string tempStr = messageJsonified.Substring(messageJsonified.IndexOf("IdChl"));
+                string tempStr = jsonMsg.Substring(jsonMsg.IndexOf("IdMsg"));
+                string tempStr1 = tempStr.Substring(tempStr.IndexOf(":") + 1);
+                string tempStr2 = tempStr1.Substring(0, tempStr1.IndexOf(","));
+
+                if (uint.TryParse(tempStr2, out uint value))
+                {
+                    Console.Out.WriteLine("GetIdMsgFromJson Number: " + value);
+                    return value;
+                }
+
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR GetIdMsgFromJson: " + ex.Message);
+                return 0;
+            }
+        }
+
+        public static uint GetIdChlFromJson(string jsonMsg)
+        {
+            try
+            {
+                string tempStr = jsonMsg.Substring(jsonMsg.IndexOf("IdChl"));
                 string tempStr1 = tempStr.Substring(tempStr.IndexOf(":") + 1);
                 string tempStr2 = tempStr1.Substring(0, tempStr1.IndexOf(","));
 
@@ -251,7 +274,7 @@ namespace MUD_Skeleton.Commons.Comms
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR ObtainChannelFromMessageJSON: "+ex.Message);
+                Console.WriteLine("ERROR GetIdChlFromJson: " + ex.Message);
                 return 0;
             }
         }

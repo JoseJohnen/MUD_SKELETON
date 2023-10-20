@@ -24,6 +24,61 @@ namespace MUD_Skeleton.Commons.Comms
         public uint ActiveChl { get => activeChl; set => activeChl = value; }
         #endregion
 
+        #region Idempotency Protection
+        private uint IdLastSendedId = 1;
+        private uint IdLastReceivedId = 0;
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and then update such value with the one bringed by the parameter
+        /// </summary>
+        /// <param name="newLast">the new last id message, it will be registered but will just be returned in the next call of this function</param>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public uint GetLastSendedIdMsg(out uint newLast)
+        {
+            uint a = IdLastSendedId;
+            newLast = IdLastSendedId++;
+            return a;
+        }
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and then elevate it +1
+        /// </summary>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public uint GetLastSendedIdMsg()
+        {
+            uint a = IdLastSendedId;
+            IdLastSendedId++;
+            return a;
+        }
+
+        /// <summary>
+        /// Get the last number received message registered and return it 
+        /// and register the current last id message passed in the parameter
+        /// </summary>
+        /// <param name="newLast">convert this number in the last number received from message registered, this number will be returned the next time this function is called</param>
+        /// <returns>the last number received message registered before this current call of the method</returns>
+        public uint GetLastReceivedIdMsg(uint newLast)
+        {
+            uint n = IdLastReceivedId;
+            IdLastReceivedId = newLast;
+            return n;
+        }
+
+        /// <summary>
+        /// Get the current last number of message
+        /// and then elevate it +1
+        /// </summary>
+        /// <returns>the current last number id of message registered up to that point</returns>
+        public uint GetLastReceivedIdMsg()
+        {
+            uint n = IdLastReceivedId;
+            IdLastReceivedId++;
+            return n;
+        }
+        #endregion
+
         #region Channels (Thread & COMMs) Related
         #region Shock absorbers
         public Dictionary<string, Thread> dic_threads = new Dictionary<string, Thread>();
@@ -77,6 +132,7 @@ namespace MUD_Skeleton.Commons.Comms
         public async void ReadingChannelReceive()
         {
             string tempString = string.Empty;
+            bool addedSuccessfully = false;
             while (await ReaderReceive.WaitToReadAsync())
             {
                 string strTemp = await ReaderReceive.ReadAsync();
@@ -84,9 +140,21 @@ namespace MUD_Skeleton.Commons.Comms
                 if (tempString.Contains("{") && tempString.Contains("}"))
                 {
                     tempString = tempString.Replace("\0\0", "").Trim();
+                    uint idMsg = Message.GetIdMsgFromJson(tempString);
+                    //Si este mensaje id ya ha sido recibido en el pasado
+                    //(es decir si es menor o igual) entonces se ignora
+                    if (idMsg <= GetLastReceivedIdMsg())
+                    {
+                        continue;
+                    }
+
                     if (Message.IsValidMessage(tempString))
                     {
-                        L_ReceiveQueueMessages.Add(tempString);
+                        while(!addedSuccessfully)
+                        {
+                            addedSuccessfully = L_ReceiveQueueMessages.TryAdd(tempString);
+                        }
+                        addedSuccessfully = false;
                         //WriterReceiveProcess.TryWrite(tempString);
                         tempString = string.Empty;
                     }
@@ -148,10 +216,13 @@ namespace MUD_Skeleton.Commons.Comms
             {
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
-                if (tempString.Contains("{") && tempString.Contains("}"))
+                //if (tempString.Contains("{") && tempString.Contains("}"))
+                if (!string.IsNullOrWhiteSpace(tempString))
                 {
+                    Message Mandar = new Message(ActiveChl, tempString);
+                    Mandar.IdMsg = GetLastSendedIdMsg();
                     //L_SendQueueMessages.Enqueue(strTemp);
-                    WriterSendProcess.TryWrite(strTemp);
+                    WriterSendProcess.TryWrite(Mandar.ToJson());
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");

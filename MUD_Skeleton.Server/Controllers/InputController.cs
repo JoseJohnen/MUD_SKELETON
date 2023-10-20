@@ -115,10 +115,10 @@ namespace MUD_Skeleton.Server.Controllers
                 /*
                  * ENVIAR Data a la gente que corresponda según el canal
                  */
-                Message nwMsg = new Message(ChlMsg, result);
+                //Message nwMsg = new Message(ChlMsg, result);
                 foreach (OnlineClient onClt in OnlineClient.L_onlineClients.Where(a => a.L_channels.Any(x => x.Item2 == ChlMsg)).Reverse())
                 {
-                    onClt.WriterSend.WriteAsync(nwMsg.ToJson());
+                    onClt.WriterSend.WriteAsync(result);
                 }
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.White;
@@ -184,8 +184,9 @@ namespace MUD_Skeleton.Server.Controllers
                             if (OnlineClient.L_onlineClients[position].L_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0 && OnlineClient.L_onlineClients[position].ActiveChl != tempUint)
                             {
                                 OnlineClient.L_onlineClients[position].ActiveChl = tempUint;
-                                Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ACHL:" + tempUint);
-                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                //Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ACHL:" + tempUint);
+                                //OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync("~ACHL:" + tempUint);
                                 Console.BackgroundColor = ConsoleColor.Green;
                                 Console.ForegroundColor = ConsoleColor.White;
                                 Console.Out.WriteLine("Canal " + tempUint + " Es el nuevo canal activo para " + OnlineClient.L_onlineClients[position].Name);
@@ -206,6 +207,7 @@ namespace MUD_Skeleton.Server.Controllers
                                 Console.ResetColor();
                             }
                         }
+                        return String.Empty;
                         break;
                     case "/ADD":
                         if (uint.TryParse(content, out tempUint))
@@ -215,8 +217,9 @@ namespace MUD_Skeleton.Server.Controllers
                                 OnlineClient.L_onlineClients[position].L_channels.Add(new Pares<uint, uint>(0, tempUint));
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ADDCHL:" + tempUint);
                                 //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ADDCHL:" + tempUint);
-                                Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ADDCHL:" + tempUint);
-                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                //Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ADDCHL:" + tempUint);
+                                //OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync("~ADDCHL:" + tempUint);
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < OnlineClient.L_onlineClients[position].L_channels.Count; i++)
                                 {
@@ -236,8 +239,9 @@ namespace MUD_Skeleton.Server.Controllers
                                 /* El canal ya esta registrado al usuario */
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISPRSNTCHL:" + tempUint);
                                 //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
-                                Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ISPRSNTCHL:" + tempUint);
-                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                //Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ISPRSNTCHL:" + tempUint);
+                                //OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < OnlineClient.L_onlineClients[position].L_channels.Count; i++)
                                 {
@@ -253,6 +257,7 @@ namespace MUD_Skeleton.Server.Controllers
                                 Console.ResetColor();
                             }
                         }
+                        return String.Empty;
                         break;
                     case "/REM":
                         if (uint.TryParse(content, out tempUint))
@@ -263,8 +268,9 @@ namespace MUD_Skeleton.Server.Controllers
                                 OnlineClient.L_onlineClients[position].L_channels.RemoveAll(c => c.Item2 == tempUint);
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~REMCHL:" + tempUint);
                                 //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~REMCHL:" + tempUint);
-                                Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~REMCHL:" + tempUint);
-                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                //Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~REMCHL:" + tempUint);
+                                //OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync("~REMCHL:" + tempUint);
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < OnlineClient.L_onlineClients[position].L_channels.Count; i++)
                                 {
@@ -284,8 +290,9 @@ namespace MUD_Skeleton.Server.Controllers
                                 /* No encuentra el canal o no existe */
                                 //OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue("~ISNONCHL:" + tempUint);
                                 //OnlineClient.l_onlineClients[position].WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
-                                Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ISNONCHL:" + tempUint);
-                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                //Message ansW = new Message(OnlineClient.L_onlineClients[position].ActiveChl, "~ISNONCHL:" + tempUint);
+                                //OnlineClient.L_onlineClients[position].WriterSend.WriteAsync(ansW.ToJson());
+                                OnlineClient.L_onlineClients[position].WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < OnlineClient.L_onlineClients[position].L_channels.Count; i++)
                                 {
@@ -301,6 +308,7 @@ namespace MUD_Skeleton.Server.Controllers
                                 Console.ResetColor();
                             }
                         }
+                        return String.Empty;
                         break;
                     default:
                         Console.BackgroundColor = ConsoleColor.Green;
