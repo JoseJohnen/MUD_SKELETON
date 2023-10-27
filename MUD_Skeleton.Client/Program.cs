@@ -1,10 +1,8 @@
 ﻿using MUD_Skeleton.Client.Controllers;
 using MUD_Skeleton.Commons.Auxiliary;
-using MUD_Skeleton.Commons.Comms;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 
 namespace MUD_Skeleton.Client
 {
@@ -14,12 +12,6 @@ namespace MUD_Skeleton.Client
     {
         static List<Pares<string, Thread>> l_clientThreads = new List<Pares<string, Thread>>();
 
-        //static Thread clientThreadSend;
-        //static Thread clientThreadReceive;
-
-        //static TcpClient clientToServerClient;
-        //static TcpClient serverToClientClient;
-
         static string externalMessage = "hello server";
         static int activeThreads = 0;
         static string name = string.Empty;
@@ -28,11 +20,6 @@ namespace MUD_Skeleton.Client
         static CancellationToken ctReceivingDataTCP = new CancellationToken();
 
         static uint IdSender = 0;
-        //static Dictionary<string, Trios<TypeOfMethod, TcpClient, int>> dic_use_typeOfMethode = new Dictionary<string, Trios<TypeOfMethod, TcpClient, int>>()
-        //{
-        //    ["clientThreadSend"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientSendCommunication, null, 12345),
-        //    ["clientThreadReceive"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientReceiveCommunication, null, 12345)
-        //};
 
         static void Main()
         {
@@ -60,9 +47,6 @@ namespace MUD_Skeleton.Client
                         externalMessage = string.Empty;
                     }
                 }
-                //// Clean up
-                //clientToServerClient.Close();
-                //serverToClientClient.Close();
             }
             catch (Exception ex)
             {
