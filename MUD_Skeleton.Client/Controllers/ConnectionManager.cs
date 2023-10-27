@@ -7,13 +7,18 @@ namespace MUD_Skeleton.Client.Controllers
     public static class ConnectionManager
     {
         #region Static Utilitary Attributes
-        public static Queue<string> cq_instructionsToSend = new Queue<string>();
         public static Queue<string> cq_instructionsReceived = new Queue<string>();
 
         public static string receivedMessage = string.Empty;
 
         private static uint activeChl = 0;
         public static uint ActiveChl { get => activeChl; set => activeChl = value; }
+
+        private static uint name = 0;
+        public static uint Name
+        {
+            get => name; set => name = value;
+        }
 
         //N° de mensaje, Canal
         private static List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
@@ -149,7 +154,7 @@ namespace MUD_Skeleton.Client.Controllers
                         uint idMsg = Message.GetIdMsgFromJson(tempString);
                         //Si este mensaje id ya ha sido recibido en el pasado
                         //(es decir si es menor o igual) entonces se ignora
-                        if(idMsg <= GetLastReceivedIdMsg(idMsg))
+                        if (idMsg <= GetLastReceivedIdMsg(idMsg))
                         {
                             continue;
                         }
@@ -224,11 +229,12 @@ namespace MUD_Skeleton.Client.Controllers
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
                 //if (tempString.Contains("{") && tempString.Contains("}"))
-                if(!string.IsNullOrWhiteSpace(tempString))
+                if (!string.IsNullOrWhiteSpace(tempString))
                 {
                     Message Mandar = new Message(ConnectionManager.ActiveChl, tempString);
                     Mandar.IdMsg = GetLastSendedIdMsg();
-                    cq_instructionsToSend.Enqueue(Mandar.ToJson());
+                    Mandar.IdSnd = Name;
+                    WriterSendProcess.WriteAsync(Mandar.ToJson());
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
@@ -237,7 +243,6 @@ namespace MUD_Skeleton.Client.Controllers
                 }
                 Console.Out.WriteLine($"ReadingSend {strTemp}");
                 Console.Out.WriteLine($"ReadingSend {tempString}");
-                Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
                 strTemp = string.Empty;
             }
         }
@@ -341,7 +346,7 @@ namespace MUD_Skeleton.Client.Controllers
                 if (writerSendProcess == null)
                 {
                     writerSendProcess = ChannelSendProcess.Writer;
-                 }
+                }
                 return writerSendProcess;
             }
             set => writerSendProcess = value;
@@ -387,8 +392,9 @@ namespace MUD_Skeleton.Client.Controllers
         #endregion
 
         #region Data Processing
-        public static string ProcessDataFromServer(string data)
+        public static string ProcessDataFromServer(string info)
         {
+            string data = info;
             try
             {
                 /*
@@ -403,9 +409,13 @@ namespace MUD_Skeleton.Client.Controllers
 
                 if (tmpString.Contains("~"))
                 {
-                    arrStr = tmpString.Split(":", StringSplitOptions.RemoveEmptyEntries);
-                    itm = arrStr[0];
-                    content = arrStr[1];
+                    //if it have some content, it prepares it, otherwise keep it as is 
+                    if (tmpString.Contains(":"))
+                    {
+                        arrStr = tmpString.Split(":", StringSplitOptions.RemoveEmptyEntries);
+                        itm = arrStr[0];
+                        content = arrStr[1];
+                    }
                 }
 
                 uint tempUint = 0;
@@ -511,6 +521,24 @@ namespace MUD_Skeleton.Client.Controllers
                         }
                         return string.Empty;
                         break;
+                    case "~NAMERECEIVED":
+
+                        return string.Empty;
+                        break;
+                    case "~YOURNAMEIS":
+                        /* Asigna el nombre que tendrá en el servidor este cliente
+                         * Elemento vital para poder establecer y mantener las comunicaciones
+                         */
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Out.WriteLine($"Nombre asignado recibido desde el servidor: {content}");
+                        Console.ResetColor();
+                        if (uint.TryParse(content, out tempUint))
+                        {
+                            Name = tempUint;
+                        }
+                        return string.Empty;
+                        break;
                     default:
                         /* 
                          * Quiere decir que no es una instrucción de coordinación cliente-servidor sino que algo que funciona dentro
@@ -538,7 +566,7 @@ namespace MUD_Skeleton.Client.Controllers
             {
                 Console.BackgroundColor = ConsoleColor.Red;
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Out.WriteLineAsync(" Error ProcessDataFromPlayers(string): " + ex.Message);
+                Console.Out.WriteLineAsync(" Error ProcessDataFromServer(string): " + ex.Message + " data: " + data);
                 Console.ResetColor();
                 return string.Empty;
             }

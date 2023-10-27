@@ -93,6 +93,19 @@ namespace MUD_Skeleton.Commons.Comms
             }
         }
 
+        private uint idSnd = 0;
+        public uint IdSnd
+        {
+            get
+            {
+                return idSnd;
+            }
+            set
+            {
+                idSnd = value;
+            }
+        }
+
         private uint length = 0;
         public uint Length { get => length; private set => length = value; }
 
@@ -275,6 +288,28 @@ namespace MUD_Skeleton.Commons.Comms
             catch (Exception ex)
             {
                 Console.WriteLine("ERROR GetIdChlFromJson: " + ex.Message);
+                return 0;
+            }
+        }
+
+        public static uint GetIdSndFromJson(string jsonMsg)
+        {
+            try
+            {
+                string tempStr = jsonMsg.Substring(jsonMsg.IndexOf("IdSnd"));
+                string tempStr1 = tempStr.Substring(tempStr.IndexOf(":") + 1);
+                string tempStr2 = tempStr1.Substring(0, tempStr1.IndexOf(","));
+
+                if (uint.TryParse(tempStr2, out uint value))
+                {
+                    return value;
+                }
+
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR GetIdSndFromJson: " + ex.Message);
                 return 0;
             }
         }

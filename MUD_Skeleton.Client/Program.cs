@@ -1,8 +1,10 @@
 ﻿using MUD_Skeleton.Client.Controllers;
 using MUD_Skeleton.Commons.Auxiliary;
 using MUD_Skeleton.Commons.Comms;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace MUD_Skeleton.Client
 {
@@ -22,20 +24,20 @@ namespace MUD_Skeleton.Client
         static int activeThreads = 0;
         static string name = string.Empty;
 
-        static Dictionary<string, Trios<TypeOfMethod, TcpClient, int>> dic_use_typeOfMethode = new Dictionary<string, Trios<TypeOfMethod, TcpClient, int>>()
-        {
-            ["clientThreadSend"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientSendCommunication, null, 12345),
-            ["clientThreadReceive"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientReceiveCommunication, null, 12345)
-        };
+        static CancellationToken ctSendingDataUDP = new CancellationToken();
+        static CancellationToken ctReceivingDataTCP = new CancellationToken();
+
+        static uint IdSender = 0;
+        //static Dictionary<string, Trios<TypeOfMethod, TcpClient, int>> dic_use_typeOfMethode = new Dictionary<string, Trios<TypeOfMethod, TcpClient, int>>()
+        //{
+        //    ["clientThreadSend"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientSendCommunication, null, 12345),
+        //    ["clientThreadReceive"] = new Trios<TypeOfMethod, TcpClient, int>(TypeOfMethod.HandleClientReceiveCommunication, null, 12345)
+        //};
 
         static void Main()
         {
             try
             {
-                //TODO: Here comes random name, it should be something more stable, but will be random for now because of testing purposes
-                Random rand = new Random();
-                name = rand.Next(1000000, 10000000).ToString();
-
                 //Prepare client for connections and uses
                 Controller.Controller_Start();
 
@@ -76,75 +78,50 @@ namespace MUD_Skeleton.Client
             try
             {
                 string messageId = string.Empty;
-                bool nameWasSended = false;
+
+                NetworkStream serverToClientStream = null;
+
+                // Connect to the server's client-to-server port
+                TcpClient tcpClt = new TcpClient(serverIp, 12345);
+                serverToClientStream = tcpClt.GetStream();
+
+                if (serverToClientStream != null)
+                {
+                        //TODO: Change the name for the login name + Motherboard + Process + Mac or something like that
+                        //For now, it would be a randomized value randomized outside of this
+                        //messageId = "NAME:" + name;
+                        messageId = "NAME";
+
+                        byte[] dataName = Encoding.ASCII.GetBytes(messageId);
+                        //Sended to create the OnlineClient
+                        serverToClientStream.Write(dataName, 0, dataName.Length);
+                }
+
+                l_clientThreads.Add(new Pares<string, Thread>("_RECEIVE_COMMS_SOCKET", new Thread(() => HandleClientReceiveCommunication(tcpClt, ctReceivingDataTCP))));
+                l_clientThreads.Where(c => c.Item1 == "_RECEIVE_COMMS_SOCKET").First().Item2.Start();
+                l_clientThreads.Add(new Pares<string, Thread>("_SENDING_COMMS_UDP", new Thread(() => HandleClientSendCommunication(ctSendingDataUDP))));
+                l_clientThreads.Where(c => c.Item1 == "_SENDING_COMMS_UDP").First().Item2.Start();
+
+                bool isNameSetted = false;
                 do
                 {
-                    /*if (string.IsNullOrWhiteSpace(externalMessage))
+                    if(ConnectionManager.Name != 0)
                     {
-                        externalMessage = Console.ReadLine();
-                    }*/
-
-                    foreach (KeyValuePair<string, Trios<TypeOfMethod, TcpClient, int>> item in dic_use_typeOfMethode.Reverse())
-                    {
-                        NetworkStream clientToServerStream = null;
-
-                        if (l_clientThreads.Where(c => c.Item1 == item.Key).ToList().Count == 0)
-                        {
-                            // Connect to the server's client-to-server port
-                            item.Value.Item2 = new TcpClient(serverIp, item.Value.Item3);
-                            clientToServerStream = item.Value.Item2.GetStream();
-
-                            if (item.Value.Item1 == TypeOfMethod.HandleClientSendCommunication)
-                            {
-                                l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientSendCommunication(item.Value.Item2))));
-                                messageId = "Client-To-Server+";
-                                byte[] data = Encoding.ASCII.GetBytes(messageId);
-                                clientToServerStream.Write(data, 0, data.Length);
-                            }
-                            else if (item.Value.Item1 == TypeOfMethod.HandleClientReceiveCommunication)
-                            {
-                                l_clientThreads.Add(new Pares<string, Thread>(item.Key, new Thread(() => HandleClientReceiveCommunication(item.Value.Item2))));
-                                messageId = "Server-To-Client+";
-                                byte[] data = Encoding.ASCII.GetBytes(messageId);
-                                clientToServerStream.Write(data, 0, data.Length);
-                            }
-
-                            l_clientThreads.Where(c => c.Item1 == item.Key).First().Item2.Start();
-                        }
-
-                        if (clientToServerStream != null)
-                        {
-                            if (!nameWasSended)
-                            {
-                                //TODO: Change the name for the login name + Motherboard + Process + Mac or something like that
-                                //For now, it would be a randomized value randomized outside of this
-                                messageId = "NAME:" + name;
-
-                                byte[] dataName = Encoding.ASCII.GetBytes(messageId);
-                                clientToServerStream.Write(dataName, 0, dataName.Length);
-                            }
-                        }
+                        ConnectionManager.WriterSend.WriteAsync(messageId+":"+ConnectionManager.Name);
+                        isNameSetted = true;
                     }
-
                 }
-                while (true);
+                while (!isNameSetted);
+                //Sending to register the UDP connection with the same OnlineClient already created
+
+                //After finishing everything, it just close, preparing the conditions to run again
+                //if it happends than the 
+                l_clientThreads.RemoveAll(c => c.Item1 == "RegenComms");
+                return;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error RegenComms: " + ex.Message);
-                Thread.Sleep(15000);
-                foreach (KeyValuePair<string, Trios<TypeOfMethod, TcpClient, int>> item in dic_use_typeOfMethode)
-                {
-                    if (item.Value.Item2 != null)
-                    {
-                        if (item.Value.Item2.Connected == true)
-                        {
-                            item.Value.Item2.Close();
-                        }
-                        item.Value.Item2 = null;
-                        l_clientThreads.RemoveAll(c => c.Item1 == item.Key);
-                    }
-                }
                 if (l_clientThreads.Count == 1)
                 {
                     l_clientThreads.Clear();
@@ -152,41 +129,41 @@ namespace MUD_Skeleton.Client
                 l_clientThreads.Add(new Pares<string, Thread>("RegenComms", new Thread(() => RegenComms(serverIp))));
                 l_clientThreads.Where(c => c.Item1 == "RegenComms").First().Item2.Start();
             }
+            finally
+            {
+                Console.Out.WriteLine("Finalized RegenComms");
+            }
         }
         #endregion
 
         #region Send - Receive Operations
-        static void HandleClientSendCommunication(TcpClient clientToServerClient)
+        static async void HandleClientSendCommunication(CancellationToken cancellationToken)
         {
             try
             {
-                NetworkStream clientToServerStream = clientToServerClient.GetStream();
                 Interlocked.Increment(ref activeThreads);
                 Console.WriteLine("Add HSC activeThreads: " + activeThreads + "\n");
 
-                //byte[] buffer = new byte[1024];
-                //int bytesRead;
                 string message = string.Empty;
 
-                while (true)
-                {
-                    // Echo the received data back to the client using server-to-client connection
-                    //if (!string.IsNullOrWhiteSpace(externalMessage))
-                    //{
-                    //    message = externalMessage;
-                    //    Console.Out.WriteLine("Sending . . . " + message);
-                    //    byte[] data = Encoding.ASCII.GetBytes(message);
-                    //    /*TODO MIRAR ACA */
-                    //    clientToServerStream.Write(data, 0, data.Length);
-                    //    externalMessage = string.Empty;
-                    //}
 
-                    while (ConnectionManager.cq_instructionsToSend.TryDequeue(out message))
+                while (await ConnectionManager.ReaderSendProcess.WaitToReadAsync())
+                {
+                    message = await ConnectionManager.ReaderSendProcess.ReadAsync();
+                    UdpClient client = new UdpClient();
+                    IPEndPoint ep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 11000); // endpoint where server is listening
+
+                    client.Connect(ep);
+                    Console.Out.WriteLine("Sending . . . " + message);
+                    // send data
+                    int bytesSended = client.Send(Encoding.ASCII.GetBytes(message));
+                    Console.Out.WriteLine(bytesSended+" bytes sended successfully . . . ");
+
+                    if (cancellationToken.IsCancellationRequested)
                     {
-                        Console.Out.WriteLine("Sending . . . " + message);
-                        byte[] data = Encoding.ASCII.GetBytes(message);
-                        clientToServerStream.Write(data, 0, data.Length);
+                        return;
                     }
+                    message = string.Empty;
                 }
 
                 // Clean up
@@ -194,16 +171,18 @@ namespace MUD_Skeleton.Client
             }
             catch (Exception ex)
             {
-                clientToServerClient.Close();
-                //clientThreadSend = null;
                 Interlocked.Decrement(ref activeThreads);
-                l_clientThreads.RemoveAll(c => c.Item1 == "clientThreadSend");
-                Console.WriteLine("Remove HSC activeThreads: " + activeThreads + "\n");
-                Console.WriteLine("Error HandleClientSendCommunication: " + ex.Message);
+                l_clientThreads.RemoveAll(c => c.Item1 == "_SENDING_COMMS_UDP");
+                Console.Out.WriteLine("Remove HSC activeThreads: " + activeThreads + "\n");
+                Console.Out.WriteLine("Error HandleClientSendCommunication: " + ex.Message);
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized HandleClientSendCommunication");
             }
         }
 
-        static void HandleClientReceiveCommunication(TcpClient serverToClientClient)
+        static void HandleClientReceiveCommunication(TcpClient serverToClientClient, CancellationToken cancellationToken)
         {
             try
             {
@@ -237,6 +216,11 @@ namespace MUD_Skeleton.Client
                     //Console.Out.WriteLine("Received from server: " + receivedMessage);
                     Console.WriteLine("Received: " + ConnectionManager.receivedMessage + " TOTAL : " + ConnectionManager.cq_instructionsReceived.Count);
                     ConnectionManager.receivedMessage = string.Empty;
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
                 }
 
                 // Clean up
@@ -244,12 +228,14 @@ namespace MUD_Skeleton.Client
             }
             catch (Exception ex)
             {
-                serverToClientClient.Close();
-                //clientThreadReceive = null;
                 Interlocked.Decrement(ref activeThreads);
-                l_clientThreads.RemoveAll(c => c.Item1 == "clientThreadReceive");
+                l_clientThreads.RemoveAll(c => c.Item1 == "_RECEIVE_COMMS_SOCKET");
                 Console.WriteLine("Remove HRC activeThreads: " + activeThreads + "\n");
                 Console.WriteLine("Error HandleClientReceiveCommunication: " + ex.Message);
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized HandleClientReceiveCommunication");
             }
         }
         #endregion

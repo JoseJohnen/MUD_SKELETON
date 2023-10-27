@@ -5,7 +5,6 @@ using MUD_Skeleton.Server.Controllers;
 using MUD_Skeleton.Commons.Comms;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using MUD_Skeleton.Commons.Auxiliary;
 
 namespace MUD_Skeleton.Server
 {
@@ -19,6 +18,7 @@ namespace MUD_Skeleton.Server
         static ConcurrentDictionary<string, Thread> cDic_clientThreads = new ConcurrentDictionary<string, Thread>();
         static Thread cThread;
         static Thread dThread;
+        static Thread eThread;
         static ConcurrentDictionary<string, OnlineClient> cDic_tcpClientsReceived = new ConcurrentDictionary<string, OnlineClient>();
         #endregion
 
@@ -77,11 +77,13 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                Console.Out.WriteLine("Starting ReadingChannelTcpListener");
                 string tempString = string.Empty;
                 while (await ReaderTcpListener.WaitToReadAsync())
                 {
                     TcpClient tcpClient = await ReaderTcpListener.ReadAsync();
-                    //cq_tcpClientsReceived.Enqueue(tcpClient);
+                    Console.Out.WriteLine($"Receiving connection from {tcpClient.Client.LocalEndPoint.ToString()}");
+                    //cq_tcpClientsReceived.Enqueue(tcpClient)
                     string name = "_" + cDic_clientThreads.Count;
                     Thread tempThread = new Thread(() => ConnectConnectionsWithClient(tcpClient, name));
                     tempThread.Start();
@@ -98,6 +100,10 @@ namespace MUD_Skeleton.Server
             catch (Exception ex)
             {
                 Console.Out.WriteLine($"Error ReadingChannelTcpListener: {ex.Message}");
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized ReadingChannelTcpListener");
             }
         }
 
@@ -148,11 +154,17 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                Console.Out.WriteLine("Starting ReadingChannelOnlineClient");
                 string tempString = string.Empty;
+                bool tryadd = false;
                 while (await ReaderOnlineClient.WaitToReadAsync())
                 {
                     OnlineClient onClient = await ReaderOnlineClient.ReadAsync();
-                    OnlineClient.cq_tcpOnlineClientsReceived.Enqueue(onClient);
+                    do
+                    {
+                        tryadd = OnlineClient.cq_tcpOnlineClientsReceived.TryAdd(onClient);
+                    }
+                    while (!tryadd);
                     //OnlineClient.L_onlineClients.Add(onClient);
 
                     Console.Out.WriteLine($"ReadingChannelOnlineClient {onClient.Name} added successfully");
@@ -162,6 +174,10 @@ namespace MUD_Skeleton.Server
             {
                 Console.Out.WriteLine($"Error ReadingChannelOnlineClient: {ex.Message}");
             }
+            finally
+            {
+                Console.Out.WriteLine("Finalized ReadingChannelOnlineClient");
+            }
         }
         #endregion
 
@@ -170,6 +186,7 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                Console.Out.WriteLine("Starting MainWithConnectionManager");
                 //Preparing to receive data of players
                 InputController.InputController_Start();
 
@@ -190,6 +207,9 @@ namespace MUD_Skeleton.Server
 
                 dThread = new Thread(() => ReadingChannelOnlineClient());
                 dThread.Start();
+
+                eThread = new Thread(() => HandleFromClientReceivedCommunication());
+                eThread.Start();
 
                 Console.WriteLine("Server started. Waiting for connections...");
                 while (true)
@@ -220,7 +240,11 @@ namespace MUD_Skeleton.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error: " + ex.ToString());
+                Console.Out.WriteLine("Error MainWithConnectionManager: " + ex.ToString());
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized MainWithConnectionManager");
             }
         }
 
@@ -228,14 +252,11 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                Console.Out.WriteLine("Starting ThreadDefinition");
                 Thread clientThread;
-                clientThread = new Thread(() => HandleClientSendCommunication(onlineClient));
+                clientThread = new Thread(() => HandleToClientSendCommunication(onlineClient));
                 clientThread.Start();
                 onlineClient.dic_threads.Add(onlineClient.Name + "_SEND", clientThread);
-
-                clientThread = new Thread(() => HandleClientReceiveCommunication(onlineClient));
-                clientThread.Start();
-                onlineClient.dic_threads.Add(onlineClient.Name + "_RECEIVE", clientThread);
 
                 clientThread = new Thread(() => onlineClient.ReadingChannelReceive());
                 clientThread.Start();
@@ -248,8 +269,12 @@ namespace MUD_Skeleton.Server
             }
             catch (Exception ex)
             {
-                Console.Out.WriteLine("Error bool ThreadDefinition(OnlineClient): "+ex.ToString());
+                Console.Out.WriteLine("Error bool ThreadDefinition(OnlineClient): " + ex.ToString());
                 return false;
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized ThreadDefinition");
             }
         }
 
@@ -257,12 +282,13 @@ namespace MUD_Skeleton.Server
         {
             try
             {
+                Console.Out.WriteLine("Starting ConnectConnectionsWithClient");
                 byte[] buffer = new byte[255];
-                string[] strArr = null;
                 NetworkStream serverToClientStream = tcpClient.GetStream();
                 OnlineClient onClient = null;
                 while (tcpClient.Connected)
                 {
+                    Console.Out.WriteLine("TCP Socket is Connected");
                     // Read data from client-to-server connection
                     if (serverToClientStream == null)
                     {
@@ -278,49 +304,49 @@ namespace MUD_Skeleton.Server
 
                     //Reading the message . . . And publishing in console to be read
                     string receivedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    Console.Out.WriteLine("TCP Socket CCWC: Received " + receivedMessage);
 
-                    if (receivedMessage.Contains("NAME:"))
+                    if (receivedMessage.Contains("NAME"))
                     {
-                        strArr = receivedMessage.Split(":", StringSplitOptions.RemoveEmptyEntries);
-                        if (cDic_tcpClientsReceived.Values.Where(c => c.Name == strArr[1]).Count() == 0)
+                        //If it is requesting a NAME, then, it doesn't have a name Yet
+                        Console.Out.WriteLine("ConnectConnectionsWithClient NAME Request RECEIVED");
+                        Random rand = new Random();
+                        do
                         {
-                            //It's supposed to add himself to the registry list HOWEVER
-                            //i'll be adding it manually, and that's why we use the constructor
-                            //without name and instead adding the name afterwards
-                            onClient = new OnlineClient();
-                            onClient.Name = strArr[1];
-                            cDic_tcpClientsReceived.TryAdd(strArr[1], onClient);
+                            name = rand.Next(1000000, 10000000).ToString();
                         }
+                        while (OnlineClient.L_onlineClients.Any(c => c.Name == name));
 
-                        foreach (OnlineClient item in cDic_tcpClientsReceived.Values)
+                        onClient = new OnlineClient(name);
+
+                        bool isRegistered = false;
+                        do
                         {
-                            if (strArr[1] == item.Name)
-                            {
-                                string[] strArr2 = strArr[0].Split("+", StringSplitOptions.RemoveEmptyEntries);
-                                if (strArr2[0].Contains("Client-To-Server") && item.clientToServerClient == null)
-                                {
-                                    item.clientToServerClient = tcpClient;
-                                    Console.Out.WriteLine($"ConnectConnectionsWithClient clientToServerClient of {item.Name} finished, thread {name} ended");
-                                    return;
-                                }
-                                else if (strArr2[0].Contains("Server-To-Client") && item.serverToClientClient == null)
-                                {
-                                    item.serverToClientClient = tcpClient;
-                                    Thread tempThread = null;
-                                    WriterOnlineClient.WriteAsync(item);
-                                    //OnlineClient.cq_tcpOnlineClientsReceived.Enqueue(item);
-                                    cDic_clientThreads.Remove(name, out tempThread);
-                                    if (ThreadDefinition(item))
-                                    {
-                                        Console.Out.WriteLine($"ConnectConnectionsWithClient serverToClientClient of {item.Name} finished, thread {name} ended");
-                                        return;
-                                    }
+                            isRegistered = cDic_tcpClientsReceived.TryAdd(name, onClient);
+                        }
+                        while (!isRegistered);
+                        Console.Out.WriteLine("ConnectConnectionsWithClient NEW ONLINE-CLIENT CREATED");
 
+
+                        if (cDic_tcpClientsReceived.Values.Where(c => c.Name == name).Count() > 0)
+                        {
+                            if (onClient.serverToClientClient == null)
+                            {
+                                onClient.serverToClientClient = tcpClient;
+                                WriterOnlineClient.WriteAsync(onClient);
+
+                                Console.Out.WriteLine("ConnectConnectionsWithClient serverToClientClient Has been Created Successfully");
+                                if (ThreadDefinition(onClient))
+                                {
+                                    onClient.WriterSend.WriteAsync("~YOURNAMEIS:" + name);
+                                    Thread tempThread = null;
+                                    cDic_clientThreads.Remove(name, out tempThread);
+                                    Console.Out.WriteLine($"OnlineClient {onClient.Name} creation process finished, thread {name} ended");
+                                    return;
                                 }
                             }
                         }
                     }
-
                     Console.Out.WriteLine("Initial Socket, Received from server: " + receivedMessage);
                 }
 
@@ -329,34 +355,21 @@ namespace MUD_Skeleton.Server
             }
             catch (Exception ex)
             {
-                //serverToClientClient.Close();
-                //clientThreadReceive = null;
-                //Interlocked.Decrement(ref activeThreads);
-                //l_clientThreads.RemoveAll(c => c.Item1 == "clientThreadReceive");
-                //Console.WriteLine("Remove HRC activeThreads: " + activeThreads + "\n");
-                Console.WriteLine("Error ConnectConnectionsWithClient: " + ex.Message);
+                Console.Out.WriteLine("Error ConnectConnectionsWithClient: " + ex.Message);
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized ConnectConnectionsWithClient");
             }
         }
 
-        static async void HandleClientSendCommunication(OnlineClient onlineClient)
+        static async void HandleToClientSendCommunication(OnlineClient onlineClient)
         {
             try
             {
-                //NetworkStream serverToClientStream = onlineClient.serverToClientClient.GetStream();
-                //string instruction = string.Empty;
+                Console.Out.WriteLine("Starting HandleToClientSendCommunication");
                 while (true)
                 {
-                    // Echo the received data back to the client using server-to-client connection
-                    //if (onlineClient.bytesRead != 0)
-                    //{
-                    //    //serverToClientStream.Write(onlineClient.Buffer, 0, onlineClient.bytesRead);
-                    //    // Send to Every Client all the data than correspond
-
-                    //    Console.WriteLine("client: " + onlineClient.Name);
-                    //    //if (client != onlineClient)
-                    //    //{
-
-                    //while (onlineClient.L_SendQueueMessages.TryDequeue(out instruction))
                     while (await onlineClient.ReaderSendProcess.WaitToReadAsync())
                     {
                         string instruction = await onlineClient.ReaderSendProcess.ReadAsync();
@@ -371,82 +384,78 @@ namespace MUD_Skeleton.Server
                         {
                             // Clean up, because the connection is broken, will need to be redo anyways
                             onlineClient.serverToClientClient.Close();
-                            onlineClient.clientToServerClient.Close();
                             return;
                         }
                     }
-                    //}
-                    //    onlineClient.bytesRead = 0;
-                    //}
                 }
-
-                // Close the listeners
-                //clientToServerListener.Stop();
-                //serverToClientListener.Stop();
             }
             catch (Exception ex)
             {
                 // Clean up
                 onlineClient.serverToClientClient.Close();
-                onlineClient.clientToServerClient.Close();
                 //dic_clientThreads.Remove(onlineClient.Name + "_SEND");
                 //dic_clientThreads.Remove(onlineClient.Name + "_RECEIVE");
                 l_onlineClients.Remove(onlineClient);
                 Console.WriteLine("Error: " + ex.ToString());
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized HandleToClientSendCommunication");
             }
         }
 
-        static void HandleClientReceiveCommunication(OnlineClient onlineClient)
+        static void HandleFromClientReceivedCommunication()
         {
             try
             {
-                NetworkStream clientToServerStream = onlineClient.clientToServerClient.GetStream();
-
+                Console.Out.WriteLine("Starting HandleFromClientReceivedCommunication");
+                UdpClient udpServer = new UdpClient(11000);
+                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 11000);
                 while (true)
                 {
+                    byte[] data = udpServer.Receive(ref remoteEP); // listen on port 11000
 
-                    // Read data from client-to-server connection
-                    if (clientToServerStream == null || onlineClient.clientToServerClient.Client.Connected == false)
-                    {
-                        Console.WriteLine("clientToServerStream Closed");
-                        return;
-                    }
-
-                    //onlineClient.bytesRead = clientToServerStream.Read(onlineClient.Buffer, 0, onlineClient.Buffer.Length);
-                    clientToServerStream.Read(onlineClient.BufferReceive, 0, onlineClient.bytesLengthReceive);
-                    if (onlineClient.bytesLengthReceive == 0)
-                    {
-                        //break; // Client disconnected
-                        return; // Client disconnected
-                    }
-
-                    Console.Out.WriteLine("ByteRead: " + onlineClient.bytesLengthSend);
-                    Console.Out.WriteLine("BufferReceive: " + System.Text.Encoding.Default.GetString(onlineClient.BufferReceive));
-                    Console.Out.WriteLine("Buffer Lenght: " + System.Text.Encoding.Default.GetString(onlineClient.BufferReceive).Length);
                     //Reading the message . . . And publishing in console to be read
-                    string receivedMessage = Encoding.ASCII.GetString(onlineClient.BufferReceive, 0, onlineClient.bytesLengthReceive);
+                    string receivedMessage = Encoding.ASCII.GetString(data);
+                    string[] strArr = null;
+                    Console.Out.WriteLine("Received UDP: " + receivedMessage);
 
-                    //--Cleaning the buffer-- Thanks to the Channel<T> we can totally use a byte[1] to clean BUT we better use
-                    //the last size i thing
-                    onlineClient.BufferReceive = new byte[onlineClient.bytesLengthReceive];
-                    Console.WriteLine("Received from client: " + receivedMessage);
-                    onlineClient.WriterReceive.WriteAsync(receivedMessage);
-                    //onlineClient.L_ReceiveQueueMessages.Enqueue(receivedMessage);
+                    Message msg = Message.CreateFromJson(receivedMessage);
+                    receivedMessage = msg.TextOriginal;
+                    uint idSender = msg.IdSnd;
+                    Console.Out.WriteLine("Message Contain: " + receivedMessage);
+
+                    if (receivedMessage.Contains("NAME"))
+                    {
+                        strArr = receivedMessage.Split(":", StringSplitOptions.RemoveEmptyEntries);
+                        if (OnlineClient.L_onlineClients.Where(c => c.Name == strArr[1]).Count() > 0)
+                        {
+                            Console.Out.WriteLine("Name request received,");
+                            OnlineClient onClt = OnlineClient.L_onlineClients.Where(c => c.Name == strArr[1]).First();
+                            onClt.IpPort = remoteEP.ToString();
+                            onClt.WriterSend.WriteAsync("~NAMERECEIVED");
+                        }
+                        continue;
+                    }
+
+                    //So, or it send the wrong message, or it send the message and receive the right answer
+                    if (OnlineClient.L_onlineClients.Where(c => c.Name == Convert.ToString(idSender)).Count() > 0)
+                    {
+                        Console.Out.WriteLine("Sending back " + receivedMessage);
+                        OnlineClient onClte = OnlineClient.L_onlineClients.Where(c => c.Name == Convert.ToString(idSender)).First();
+                        onClte.WriterReceive.WriteAsync(msg.ToJson());
+                    }
                 }
-
-                // Close the listeners
-                //clientToServerListener.Stop();
-                //serverToClientListener.Stop();
             }
             catch (Exception ex)
             {
-                // Clean up
-                onlineClient.clientToServerClient.Close();
-                onlineClient.serverToClientClient.Close();
-                //dic_clientThreads.Remove(onlineClient.Name + "_SEND");
-                //dic_clientThreads.Remove(onlineClient.Name + "_RECEIVE");
-                l_onlineClients.Remove(onlineClient);
-                Console.WriteLine("Error: " + ex.ToString());
+                Console.Out.WriteLine("Error: " + ex.ToString());
+            }
+            finally
+            {
+                Console.Out.WriteLine("Finalized HandleFromClientReceivedCommunication");
+                eThread = new Thread(() => HandleFromClientReceivedCommunication());
+                eThread.Start();
             }
         }
         #endregion

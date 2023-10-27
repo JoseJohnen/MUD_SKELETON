@@ -12,9 +12,9 @@ namespace MUD_Skeleton.Commons.Comms
          * TODO:
          * **DONE** 1) Hacer que lo que cada cliente dice, lo reciban todos los demás clientes
          * 
-         * 2) Hacer que funcione Con Canales Virtuales (i.e. cada cliente esta en un canal y solo habla y escucha con el resto de los clientes en dicho canal, no escucha nada fuera del canal donde se encuentra)
+         * **DONE** 2) Hacer que funcione Con Canales Virtuales (i.e. cada cliente esta en un canal y solo habla y escucha con el resto de los clientes en dicho canal, no escucha nada fuera del canal donde se encuentra)
          * 
-         * 3) Hacer que cada cliente pueda tener mas de un socket de envío y mas de un socket de recepción simultáneamente
+         * **ELIMINATED** 3) Hacer que cada cliente pueda tener mas de un socket de envío y mas de un socket de recepción simultáneamente
          * 
          * 4) Adicionar Protección contra Idempotencia
          */
@@ -131,38 +131,46 @@ namespace MUD_Skeleton.Commons.Comms
 
         public async void ReadingChannelReceive()
         {
-            string tempString = string.Empty;
-            bool addedSuccessfully = false;
-            while (await ReaderReceive.WaitToReadAsync())
+            try
             {
-                string strTemp = await ReaderReceive.ReadAsync();
-                tempString += strTemp.Trim();
-                if (tempString.Contains("{") && tempString.Contains("}"))
+                Console.Out.WriteLine($"Starting ReadingChannelReceive");
+                string tempString = string.Empty;
+                while (await ReaderReceive.WaitToReadAsync())
                 {
-                    tempString = tempString.Replace("\0\0", "").Trim();
-                    uint idMsg = Message.GetIdMsgFromJson(tempString);
-                    //Si este mensaje id ya ha sido recibido en el pasado
-                    //(es decir si es menor o igual) entonces se ignora
-                    if (idMsg <= GetLastReceivedIdMsg())
+                    string strTemp = await ReaderReceive.ReadAsync();
+                    tempString += strTemp.Trim();
+                    if (tempString.Contains("{") && tempString.Contains("}"))
                     {
-                        continue;
-                    }
-
-                    if (Message.IsValidMessage(tempString))
-                    {
-                        while(!addedSuccessfully)
+                        tempString = tempString.Replace("\0\0", "").Trim();
+                        uint idMsg = Message.GetIdMsgFromJson(tempString);
+                        Console.Out.WriteLine("ReadingChannelReceive MSG: " + tempString);
+                        //Si este mensaje id ya ha sido recibido en el pasado
+                        //(es decir si es menor o igual) entonces se ignora
+                        if (idMsg <= GetLastReceivedIdMsg())
                         {
-                            addedSuccessfully = L_ReceiveQueueMessages.TryAdd(tempString);
+                            continue;
                         }
-                        addedSuccessfully = false;
-                        //WriterReceiveProcess.TryWrite(tempString);
-                        tempString = string.Empty;
+
+                        if (Message.IsValidMessage(tempString))
+                        {
+                            Console.Out.WriteLine("ReadingChannelReceive Writing Async: " + tempString);
+                            await WriterReceiveProcess.WriteAsync(tempString);
+                            tempString = string.Empty;
+                        }
                     }
+                    Console.Out.WriteLine($"ReadingReceive {strTemp}");
+                    Console.Out.WriteLine($"ReadingReceive {tempString}");
+                    Console.Out.WriteLine($"ReadingReceive {L_ReceiveQueueMessages.Count}");
+                    strTemp = string.Empty;
                 }
-                Console.Out.WriteLine($"ReadingReceive {strTemp}");
-                Console.Out.WriteLine($"ReadingReceive {tempString}");
-                Console.Out.WriteLine($"ReadingReceive {L_ReceiveQueueMessages.Count}");
-                strTemp = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
+            }
+            finally
+            {
+                Console.Out.WriteLine($"Finalize ReadingChannelReceive");
             }
         }
 
@@ -231,31 +239,36 @@ namespace MUD_Skeleton.Commons.Comms
                 }
                 Console.Out.WriteLine($"ReadingSend {strTemp}");
                 Console.Out.WriteLine($"ReadingSend {tempString}");
-                Console.Out.WriteLine($"ReadingSend {L_SendQueueMessages.Count}");
                 strTemp = string.Empty;
             }
         }
         #endregion
+
         #region Distributers
         //IT does create "Back Pressure"
         //It will wait for space to be available in order to wait
-        private Channel<string> channelReceiveProcess = null;
-        public Channel<string> ChannelReceiveProcess
+
+        //This distributor centralize comms post shock-absorvers of all the clients
+        //in just one nice channel, so to process them more efficiently
+        private static BoundedChannelOptions options_static = new BoundedChannelOptions(255);
+
+        private static Channel<string> channelReceiveProcess = null;
+        public static Channel<string> ChannelReceiveProcess
         {
             get
             {
                 if (channelReceiveProcess == null)
                 {
-                    options.FullMode = BoundedChannelFullMode.Wait;
-                    channelReceiveProcess = System.Threading.Channels.Channel.CreateBounded<string>(options);
+                    options_static.FullMode = BoundedChannelFullMode.Wait;
+                    channelReceiveProcess = System.Threading.Channels.Channel.CreateBounded<string>(options_static);
                 }
                 return channelReceiveProcess;
             }
             set { channelReceiveProcess = value; }
         }
 
-        private ChannelWriter<string> writerReceiveProcess = null;
-        public ChannelWriter<string> WriterReceiveProcess
+        private static ChannelWriter<string> writerReceiveProcess = null;
+        public static ChannelWriter<string> WriterReceiveProcess
         {
             get
             {
@@ -268,8 +281,8 @@ namespace MUD_Skeleton.Commons.Comms
             set => writerReceiveProcess = value;
         }
 
-        private ChannelReader<string> readerReceiveProcess = null;
-        public ChannelReader<string> ReaderReceiveProcess
+        private static ChannelReader<string> readerReceiveProcess = null;
+        public static ChannelReader<string> ReaderReceiveProcess
         {
             get
             {
@@ -282,36 +295,8 @@ namespace MUD_Skeleton.Commons.Comms
             set => readerReceiveProcess = value;
         }
 
-        //public static async void ReadingChannelReceive()
-        //{
-        //    try
-        //    {
-        //        string tempString = string.Empty;
-        //        while (await ReaderReceive.WaitToReadAsync())
-        //        {
-        //            string strTemp = await ReaderReceive.ReadAsync();
-        //            tempString += strTemp.Trim();
-        //            if (tempString.Contains("{") && tempString.Contains("}"))
-        //            {
-        //                tempString = tempString.Replace("\0\0", "").Trim();
-        //                if (Message.IsValidMessage(tempString))
-        //                {
-        //                    cq_instructionsReceived.Enqueue(tempString);
-        //                    tempString = string.Empty;
-        //                }
-        //            }
-        //            Console.Out.WriteLine($"ReadingReceive {strTemp}");
-        //            Console.Out.WriteLine($"ReadingReceive {tempString}");
-        //            Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
-        //            strTemp = string.Empty;
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
-        //    }
-        //}
-
+        //This channel however is used for each client, so is not static
+        //this is because is for sending things back to them
         private Channel<string> channelSendProcess = null;
         public Channel<string> ChannelSendProcess
         {
@@ -354,34 +339,11 @@ namespace MUD_Skeleton.Commons.Comms
             }
             set => readerSendProcess = value;
         }
-
-        //public static async void ReadingChannelSend()
-        //{
-        //    string tempString = string.Empty;
-        //    while (await ReaderSend.WaitToReadAsync())
-        //    {
-        //        string strTemp = await ReaderSend.ReadAsync();
-        //        tempString += strTemp.Trim();
-        //        if (tempString.Contains("{") && tempString.Contains("}"))
-        //        {
-        //            cq_instructionsToSend.Enqueue(tempString);
-        //            Console.BackgroundColor = ConsoleColor.Blue;
-        //            Console.ForegroundColor = ConsoleColor.Yellow;
-        //            Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
-        //            Console.ResetColor();
-        //            tempString = string.Empty;
-        //        }
-        //        Console.Out.WriteLine($"ReadingSend {strTemp}");
-        //        Console.Out.WriteLine($"ReadingSend {tempString}");
-        //        Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
-        //        strTemp = string.Empty;
-        //    }
-        //}
         #endregion
         #endregion
 
         #region Static Utilitary Attributes
-        public static ConcurrentQueue<OnlineClient> cq_tcpOnlineClientsReceived = new ConcurrentQueue<OnlineClient>();
+        public static BlockingCollection<OnlineClient> cq_tcpOnlineClientsReceived = new BlockingCollection<OnlineClient>();
 
         private static List<OnlineClient> l_onlineClients = new List<OnlineClient>();
         public static List<OnlineClient> L_onlineClients
@@ -389,7 +351,7 @@ namespace MUD_Skeleton.Commons.Comms
             get
             {
                 OnlineClient oClte = null;
-                while (cq_tcpOnlineClientsReceived.TryDequeue(out oClte))
+                while (cq_tcpOnlineClientsReceived.TryTake(out oClte))
                 //foreach (OnlineClient client in cq_tcpOnlineClientsReceived)
                 {
                     if (oClte != null)
@@ -397,7 +359,7 @@ namespace MUD_Skeleton.Commons.Comms
                         if (l_onlineClients.Where(c => c.Name == oClte.Name).Count() == 0)
                         {
                             l_onlineClients.Add(oClte);
-                            Console.Out.WriteLine("L_onlineClients: agregado "+oClte.Name);
+                            Console.Out.WriteLine("L_onlineClients: agregado " + oClte.Name);
                         }
                     }
                 }
@@ -415,6 +377,7 @@ namespace MUD_Skeleton.Commons.Comms
         public TcpClient clientToServerClient;
         public TcpClient serverToClientClient;
 
+        //Para Canales
         private List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
         public List<Pares<uint, uint>> L_channels
         {
@@ -428,6 +391,15 @@ namespace MUD_Skeleton.Commons.Comms
             }
         }
 
+        //Para UDP
+        private string ipPort = string.Empty;
+        public string IpPort
+        {
+            get { return ipPort; }
+            set { ipPort = value; }
+        }
+
+        //Para TCP
         public int bytesLengthSend = 0;
         private byte[] bufferSend = new byte[1024];
         public byte[] BufferSend
@@ -504,24 +476,6 @@ namespace MUD_Skeleton.Commons.Comms
         #endregion
 
         #region Data Instructions Administration
-        private ConcurrentQueue<string> l_SendQueueMessages = null;
-        public ConcurrentQueue<string> L_SendQueueMessages
-        {
-            get
-            {
-                if (l_SendQueueMessages == null)
-                {
-                    l_SendQueueMessages = new ConcurrentQueue<string>();
-                }
-                /*else if (l_SendQueueMessages.Count() == 0)
-                {
-                    l_SendQueueMessages = new ConcurrentQueue<string>();
-                }*/
-                return l_SendQueueMessages;
-            }
-            set => l_SendQueueMessages = value;
-        }
-
         private BlockingCollection<string> l_ReceiveQueueMessages = null;
         public BlockingCollection<string> L_ReceiveQueueMessages
         {
