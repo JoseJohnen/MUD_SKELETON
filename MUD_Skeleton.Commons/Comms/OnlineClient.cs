@@ -25,57 +25,30 @@ namespace MUD_Skeleton.Commons.Comms
         #endregion
 
         #region Idempotency Protection
-        private uint IdLastSendedId = 1;
-        private uint IdLastReceivedId = 0;
-
-        /// <summary>
-        /// Get the current last number of message
-        /// and then update such value with the one bringed by the parameter
-        /// </summary>
-        /// <param name="newLast">the new last id message, it will be registered but will just be returned in the next call of this function</param>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public uint GetLastSendedIdMsg(out uint newLast)
+        private uint idLastSendedId = 1;
+        public uint IdLastSendedId
         {
-            uint a = IdLastSendedId;
-            newLast = IdLastSendedId++;
-            return a;
+            get
+            {
+                return idLastSendedId;
+            }
+            set
+            {
+                idLastSendedId = value;
+            }
         }
 
-        /// <summary>
-        /// Get the current last number of message
-        /// and then elevate it +1
-        /// </summary>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public uint GetLastSendedIdMsg()
+        private uint idLastReceivedId = 0;
+        public uint IdLastReceivedId
         {
-            uint a = IdLastSendedId;
-            IdLastSendedId++;
-            return a;
-        }
-
-        /// <summary>
-        /// Get the last number received message registered and return it 
-        /// and register the current last id message passed in the parameter
-        /// </summary>
-        /// <param name="newLast">convert this number in the last number received from message registered, this number will be returned the next time this function is called</param>
-        /// <returns>the last number received message registered before this current call of the method</returns>
-        public uint GetLastReceivedIdMsg(uint newLast)
-        {
-            uint n = IdLastReceivedId;
-            IdLastReceivedId = newLast;
-            return n;
-        }
-
-        /// <summary>
-        /// Get the current last number of message
-        /// and then elevate it +1
-        /// </summary>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public uint GetLastReceivedIdMsg()
-        {
-            uint n = IdLastReceivedId;
-            IdLastReceivedId++;
-            return n;
+            get 
+            { 
+                return idLastReceivedId; 
+            }
+            set
+            {
+                idLastReceivedId = value;
+            }
         }
         #endregion
 
@@ -135,20 +108,40 @@ namespace MUD_Skeleton.Commons.Comms
             {
                 Console.Out.WriteLine($"Starting ReadingChannelReceive");
                 string tempString = string.Empty;
+
                 while (await ReaderReceive.WaitToReadAsync())
                 {
                     string strTemp = await ReaderReceive.ReadAsync();
                     tempString += strTemp.Trim();
+
                     if (tempString.Contains("{") && tempString.Contains("}"))
                     {
                         tempString = tempString.Replace("\0\0", "").Trim();
                         uint idMsg = Message.GetIdMsgFromJson(tempString);
-                        Console.Out.WriteLine("ReadingChannelReceive MSG: " + tempString);
+                        Console.Out.WriteLine($"ReadingChannelReceive MSG: {tempString} \nProt Idem: LastReceived:{idLastReceivedId} \nLastSended:{IdLastSendedId}\n");
+
                         //Si este mensaje id ya ha sido recibido en el pasado
                         //(es decir si es menor o igual) entonces se ignora
-                        if (idMsg <= GetLastReceivedIdMsg())
+                        Console.Out.WriteLine($"idMsg {idMsg} IdLastReceivedId {IdLastReceivedId}");
+                        if (idMsg <= IdLastReceivedId)
                         {
+                            tempString = string.Empty;
                             continue;
+                        }
+
+                        //If it is bigger however
+                        IdLastReceivedId = idMsg;
+
+                        //If it happends to be close to the limit that uint can count
+                        if (IdLastReceivedId >= 4294967000)
+                        {
+                            Console.Out.WriteLine($"ReadingReceive {Name} ha alcanzado el límite de registro de Idempotencia, reseteando el registro . . . ");
+                            IdLastReceivedId = 0;
+                            await WriterSend.WriteAsync("~RSTIDMPTC");
+                            Console.BackgroundColor = ConsoleColor.Green;
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.Out.WriteLine("Protección de idempotencia ha sido reseteado a 1 para " + Name);
+                            Console.ResetColor();
                         }
 
                         if (Message.IsValidMessage(tempString))
@@ -158,6 +151,7 @@ namespace MUD_Skeleton.Commons.Comms
                             tempString = string.Empty;
                         }
                     }
+
                     Console.Out.WriteLine($"ReadingReceive {strTemp}");
                     Console.Out.WriteLine($"ReadingReceive {tempString}");
                     Console.Out.WriteLine($"ReadingReceive {L_ReceiveQueueMessages.Count}");
@@ -170,7 +164,18 @@ namespace MUD_Skeleton.Commons.Comms
             }
             finally
             {
+
+                Console.BackgroundColor = ConsoleColor.Red;
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Out.WriteLine($"Finalize ReadingChannelReceive");
+                Console.ResetColor();
+                //TODO: Desconozco si esto va a funcionar para resetarlo pero, Teoricamente DEBERIA, hay que confirmar en la consola.
+                //Si no funciona, o tira algún error, lo que habría que hacer es cargar un nuevo thread en el mismo espacio del
+                //dictionary ya ocupado, y tirarlo a correr.
+                //
+                //Sin embargo, creo que dado que la función terminará su funcionamiento pero seguirá guardada en memoria, creo
+                //que bastará con tirar un "Start" nuevamente y listo, habrá que ver
+                dic_threads.Where(c => c.Key == Name + "_READCHANNELRECEIVE").First().Value.Start();
             }
         }
 
@@ -224,13 +229,12 @@ namespace MUD_Skeleton.Commons.Comms
             {
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
-                //if (tempString.Contains("{") && tempString.Contains("}"))
                 if (!string.IsNullOrWhiteSpace(tempString))
                 {
                     Message Mandar = new Message(ActiveChl, tempString);
-                    Mandar.IdMsg = GetLastSendedIdMsg();
-                    //L_SendQueueMessages.Enqueue(strTemp);
+                    Mandar.IdMsg = IdLastSendedId;
                     WriterSendProcess.TryWrite(Mandar.ToJson());
+                    IdLastSendedId++;
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
@@ -530,10 +534,6 @@ namespace MUD_Skeleton.Commons.Comms
             {
                 L_onlineClients = new List<OnlineClient>();
             }
-            //if (L_onlineClients.Where(c => c.Name == name).Count() == 0)
-            //{
-            //    L_onlineClients.Add(this);
-            //}
         }
         #endregion
 

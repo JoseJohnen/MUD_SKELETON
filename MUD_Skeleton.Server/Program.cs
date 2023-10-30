@@ -83,7 +83,7 @@ namespace MUD_Skeleton.Server
                 {
                     TcpClient tcpClient = await ReaderTcpListener.ReadAsync();
                     Console.Out.WriteLine($"Receiving connection from {tcpClient.Client.LocalEndPoint.ToString()}");
-                    //cq_tcpClientsReceived.Enqueue(tcpClient)
+
                     string name = "_" + cDic_clientThreads.Count;
                     Thread tempThread = new Thread(() => ConnectConnectionsWithClient(tcpClient, name));
                     tempThread.Start();
@@ -165,7 +165,6 @@ namespace MUD_Skeleton.Server
                         tryadd = OnlineClient.cq_tcpOnlineClientsReceived.TryAdd(onClient);
                     }
                     while (!tryadd);
-                    //OnlineClient.L_onlineClients.Add(onClient);
 
                     Console.Out.WriteLine($"ReadingChannelOnlineClient {onClient.Name} added successfully");
                 }
@@ -198,10 +197,6 @@ namespace MUD_Skeleton.Server
                 ServerListener = new TcpListener(ipAddress, portClientToServer);
                 ServerListener.Start();
 
-                // Set up the listener for server-to-client communication
-                //serverToClientListener = new TcpListener(ipAddress, portServerToClient);
-                //serverToClientListener.Start();
-
                 cThread = new Thread(() => ReadingChannelTcpListener());
                 cThread.Start();
 
@@ -217,26 +212,7 @@ namespace MUD_Skeleton.Server
                     // Accept client-to-server connectionss
                     TcpClient clientToServerClient = ServerListener.AcceptTcpClient();
                     WriterTcpListener.WriteAsync(clientToServerClient);
-                    //onlineClient = new OnlineClient(l_onlineClients.Count + "");
-                    //onlineClient.clientToServerClient = clientToServerClient;
-                    //Console.WriteLine("Client connected (client-to-server).");
-
-                    // Accept server-to-client connection
-                    //TcpClient serverToClientClient = serverToClientListener.AcceptTcpClient();
-                    //l_tcpClientsReceived.Add(clientToServerClient);
-                    //onlineClient.serverToClientClient = serverToClientClient;
-                    //Console.WriteLine("Client connected (server-to-client).");
-                    //l_onlineClients.Add(onlineClient);
-                    //Console.WriteLine("There is currently " + l_onlineClients.Count + " Connected.");
-
-                    // Start a new thread to handle communication with the connected clients
-                    //clientThread = new Thread(() => HandleClientCommunication(clientToServerClient, serverToClientClient));
-                    //clientThread = new Thread(() => HandleClientCommunication(onlineClient));
-                    //ThreadDefinition(onlineClient);
                 }
-
-                ////Start handling communication
-                //HandleClientCommunication(clientToServerClient, serverToClientClient);
             }
             catch (Exception ex)
             {
@@ -349,9 +325,6 @@ namespace MUD_Skeleton.Server
                     }
                     Console.Out.WriteLine("Initial Socket, Received from server: " + receivedMessage);
                 }
-
-                // Clean up
-                //serverToClientClient.Close();
             }
             catch (Exception ex)
             {

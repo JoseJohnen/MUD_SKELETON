@@ -14,12 +14,9 @@ namespace MUD_Skeleton.Client
 
         static string externalMessage = "hello server";
         static int activeThreads = 0;
-        static string name = string.Empty;
 
         static CancellationToken ctSendingDataUDP = new CancellationToken();
         static CancellationToken ctReceivingDataTCP = new CancellationToken();
-
-        static uint IdSender = 0;
 
         static void Main()
         {
@@ -43,7 +40,6 @@ namespace MUD_Skeleton.Client
                     if (!string.IsNullOrWhiteSpace(externalMessage))
                     {
                         ConnectionManager.WriterSend.WriteAsync(externalMessage);
-                        //ConnectionManager.cq_instructionsToSend.Enqueue(externalMessage);
                         externalMessage = string.Empty;
                     }
                 }
@@ -51,7 +47,7 @@ namespace MUD_Skeleton.Client
             catch (Exception ex)
             {
                 Console.WriteLine("Entro acá");
-                Console.WriteLine("Error: " + ex.ToString());
+                Console.WriteLine("Error: " + ex.Message);
             }
         }
 
@@ -73,7 +69,6 @@ namespace MUD_Skeleton.Client
                 {
                         //TODO: Change the name for the login name + Motherboard + Process + Mac or something like that
                         //For now, it would be a randomized value randomized outside of this
-                        //messageId = "NAME:" + name;
                         messageId = "NAME";
 
                         byte[] dataName = Encoding.ASCII.GetBytes(messageId);
@@ -149,9 +144,6 @@ namespace MUD_Skeleton.Client
                     }
                     message = string.Empty;
                 }
-
-                // Clean up
-                //clientToServerClient.Close();
             }
             catch (Exception ex)
             {
@@ -196,8 +188,7 @@ namespace MUD_Skeleton.Client
                     //Reading the message . . . And publishing in console to be read
                     ConnectionManager.receivedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
                     ConnectionManager.WriterReceive.WriteAsync(ConnectionManager.receivedMessage);
-                    //ConnectionManager.cq_instructionsReceived.Enqueue(ConnectionManager.receivedMessage);
-                    //Console.Out.WriteLine("Received from server: " + receivedMessage);
+
                     Console.WriteLine("Received: " + ConnectionManager.receivedMessage + " TOTAL : " + ConnectionManager.cq_instructionsReceived.Count);
                     ConnectionManager.receivedMessage = string.Empty;
 
@@ -206,9 +197,6 @@ namespace MUD_Skeleton.Client
                         return;
                     }
                 }
-
-                // Clean up
-                //serverToClientClient.Close();
             }
             catch (Exception ex)
             {
@@ -224,8 +212,6 @@ namespace MUD_Skeleton.Client
         }
         #endregion
         #endregion
-
-
     }
 
 }

@@ -57,7 +57,7 @@ namespace MUD_Skeleton.Server.Controllers
 
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("\n¡¡¡ ProcessDataFromPlayers !!!");
+                Console.WriteLine("¡¡¡ ProcessDataFromPlayers !!!");
                 Console.ResetColor();
 
                 /*
@@ -66,8 +66,8 @@ namespace MUD_Skeleton.Server.Controllers
 
                 Message msg = Message.CreateFromJson(data);
                 string itm = msg.TextOriginal;
-                Console.Out.WriteLineAsync("TextOriginal: " + msg.TextOriginal);
-                Console.Out.WriteLineAsync("itm: " + itm);
+                //Console.Out.WriteLineAsync("TextOriginal: " + msg.TextOriginal);
+                //Console.Out.WriteLineAsync("itm: " + itm);
                 string content = string.Empty;
                 string[] arrStr;
                 if (itm.Contains(":"))
@@ -119,7 +119,7 @@ namespace MUD_Skeleton.Server.Controllers
             {
                 Console.BackgroundColor = ConsoleColor.Red;
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Out.WriteLineAsync(" Error ProcessDataFromPlayers(string): " + ex.Message + " data: "+data);
+                Console.Out.WriteLineAsync(" Error ProcessDataFromPlayers(string): " + ex.Message + " data: " + data);
                 Console.ResetColor();
                 return String.Empty;
             }
@@ -136,7 +136,7 @@ namespace MUD_Skeleton.Server.Controllers
 
                 Console.BackgroundColor = ConsoleColor.Green;
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("\n¡¡¡ ProcessCommandsFromPlayer !!!");
+                Console.WriteLine("¡¡¡ ProcessCommandsFromPlayer !!!");
                 Console.ResetColor();
 
                 /*
@@ -150,9 +150,12 @@ namespace MUD_Skeleton.Server.Controllers
                 string[] arrStr;
                 if (itm.Contains("/"))
                 {
-                    arrStr = itm.Split(":", StringSplitOptions.RemoveEmptyEntries);
-                    itm = arrStr[0];
-                    content = arrStr[1];
+                    if (itm.Contains(":"))
+                    {
+                        arrStr = itm.Split(":", StringSplitOptions.RemoveEmptyEntries);
+                        itm = arrStr[0];
+                        content = arrStr[1];
+                    }
                 }
 
                 uint tempUint = 0;
@@ -165,10 +168,17 @@ namespace MUD_Skeleton.Server.Controllers
                      * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
                      */
                     //break;
+                    case "/RSTIDMPTC":
+                        clt.IdLastSendedId = 1;
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Out.WriteLine($"Id de mensaje ha sido reseteado para {clt.Name} exitosamente");
+                        Console.ResetColor();
+                        return string.Empty;
+                        break;
                     case "/ACHL":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            
                             if (clt.L_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0 && clt.ActiveChl != tempUint)
                             {
                                 clt.ActiveChl = tempUint;
@@ -198,10 +208,16 @@ namespace MUD_Skeleton.Server.Controllers
                     case "/ADD":
                         if (uint.TryParse(content, out tempUint))
                         {
+                            //Add the channel, and make it the active one
                             if (clt.L_channels.Where(c => c.Item2 == tempUint).ToList().Count() <= 0)
                             {
+                                //Add the channel
                                 clt.L_channels.Add(new Pares<uint, uint>(0, tempUint));
                                 clt.WriterSend.WriteAsync("~ADDCHL:" + tempUint);
+                                //Change it to the active one
+                                clt.ActiveChl = tempUint;
+                                clt.WriterSend.WriteAsync("~ACHL:" + tempUint);
+
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < clt.L_channels.Count; i++)
                                 {
@@ -220,6 +236,7 @@ namespace MUD_Skeleton.Server.Controllers
                             {
                                 /* El canal ya esta registrado al usuario */
                                 clt.WriterSend.WriteAsync("~ISPRSNTCHL:" + tempUint);
+
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < clt.L_channels.Count; i++)
                                 {
@@ -244,6 +261,7 @@ namespace MUD_Skeleton.Server.Controllers
                             {
                                 clt.L_channels.RemoveAll(c => c.Item2 == tempUint);
                                 clt.WriterSend.WriteAsync("~REMCHL:" + tempUint);
+
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < clt.L_channels.Count; i++)
                                 {
@@ -262,6 +280,7 @@ namespace MUD_Skeleton.Server.Controllers
                             {
                                 /* No encuentra el canal o no existe */
                                 clt.WriterSend.WriteAsync("~ISNONCHL:" + tempUint);
+
                                 string strListNum = string.Empty;
                                 for (int i = 0; i < clt.L_channels.Count; i++)
                                 {

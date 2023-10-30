@@ -36,57 +36,30 @@ namespace MUD_Skeleton.Client.Controllers
         #endregion
 
         #region Idempotency Protection
-        private static uint IdLastSendedId = 1;
-        private static uint IdLastReceivedId = 0;
-
-        /// <summary>
-        /// Get the current last number of message
-        /// and then update such value with the one bringed by the parameter
-        /// </summary>
-        /// <param name="newLast">the new last id message, it will be registered but will just be returned in the next call of this function</param>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public static uint GetLastSendedIdMsg(out uint newLast)
+        private static uint idLastSendedId = 1;
+        public static uint IdLastSendedId
         {
-            uint a = IdLastSendedId;
-            newLast = IdLastSendedId++;
-            return a;
+            get
+            {
+                return idLastSendedId;
+            }
+            set
+            {
+                idLastSendedId = value;
+            }
         }
 
-        /// <summary>
-        /// Get the current last number of message
-        /// and return it +1, 
-        /// </summary>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public static uint GetLastSendedIdMsg()
+        private static uint idLastReceivedId = 0;
+        public static uint IdLastReceivedId
         {
-            uint a = IdLastSendedId;
-            IdLastSendedId++;
-            return a;
-        }
-
-        /// <summary>
-        /// Get the last number received message registered and return it 
-        /// and register the current last id message passed in the parameter
-        /// </summary>
-        /// <param name="newLast">convert this number in the last number received from message registered, this number will be returned the next time this function is called</param>
-        /// <returns>the last number received message registered before this current call of the method</returns>
-        public static uint GetLastReceivedIdMsg(uint newLast)
-        {
-            uint n = IdLastReceivedId;
-            IdLastReceivedId = newLast;
-            return n;
-        }
-
-        /// <summary>
-        /// Get the current last number of message
-        /// and then elevate it +1
-        /// </summary>
-        /// <returns>the current last number id of message registered up to that point</returns>
-        public static uint GetLastReceivedIdMsg()
-        {
-            uint n = IdLastReceivedId;
-            IdLastReceivedId++;
-            return n;
+            get
+            {
+                return idLastReceivedId;
+            }
+            set
+            {
+                idLastReceivedId = value;
+            }
         }
         #endregion
 
@@ -152,17 +125,41 @@ namespace MUD_Skeleton.Client.Controllers
                     {
                         tempString = tempString.Replace("\0\0", "").Trim();
                         uint idMsg = Message.GetIdMsgFromJson(tempString);
+
                         //Si este mensaje id ya ha sido recibido en el pasado
                         //(es decir si es menor o igual) entonces se ignora
-                        if (idMsg <= GetLastReceivedIdMsg(idMsg))
+                        Console.Out.WriteLine($"idMsg {idMsg} IdLastReceivedId {IdLastReceivedId}");
+                        if (idMsg <= IdLastReceivedId)
+                        {
+                            tempString = string.Empty;
+                            continue;
+                        }
+
+                        //If it is bigger however
+                        IdLastReceivedId = idMsg;
+
+                        //If it happends to be close to the limit that uint can count
+                        if (IdLastReceivedId >= 4294967000)
+                        {
+                            Console.Out.WriteLine($"ReadingReceive El servidor ha alcanzado el límite de registro de Idempotencia, reseteando el registro . . . ");
+                            IdLastReceivedId = 0;
+                            await WriterSend.WriteAsync("/RSTIDMPTC");
+                            Console.BackgroundColor = ConsoleColor.Green;
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.Out.WriteLine("Protección de idempotencia ha sido reseteado a 1 para el Servidor");
+                            Console.ResetColor();
+                        }
+
+                        //Si este mensaje id ya ha sido recibido en el pasado
+                        //(es decir si es menor o igual) entonces se ignora
+                        if (idMsg < IdLastReceivedId)
                         {
                             continue;
                         }
 
                         if (Message.IsValidMessage(tempString))
                         {
-                            //cq_instructionsReceived.Enqueue(tempString);
-                            WriterReceiveProcess.WriteAsync(tempString);
+                            await WriterReceiveProcess.WriteAsync(tempString);
                             tempString = string.Empty;
                         }
                     }
@@ -228,13 +225,14 @@ namespace MUD_Skeleton.Client.Controllers
             {
                 string strTemp = await ReaderSend.ReadAsync();
                 tempString += strTemp.Trim();
-                //if (tempString.Contains("{") && tempString.Contains("}"))
+                
                 if (!string.IsNullOrWhiteSpace(tempString))
                 {
                     Message Mandar = new Message(ConnectionManager.ActiveChl, tempString);
-                    Mandar.IdMsg = GetLastSendedIdMsg();
+                    Mandar.IdMsg = IdLastSendedId;
                     Mandar.IdSnd = Name;
                     WriterSendProcess.WriteAsync(Mandar.ToJson());
+                    IdLastSendedId++;
                     Console.BackgroundColor = ConsoleColor.Blue;
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
@@ -293,36 +291,6 @@ namespace MUD_Skeleton.Client.Controllers
             set => readerReceiveProcess = value;
         }
 
-        //public static async void ReadingChannelReceive()
-        //{
-        //    try
-        //    {
-        //        string tempString = string.Empty;
-        //        while (await ReaderReceive.WaitToReadAsync())
-        //        {
-        //            string strTemp = await ReaderReceive.ReadAsync();
-        //            tempString += strTemp.Trim();
-        //            if (tempString.Contains("{") && tempString.Contains("}"))
-        //            {
-        //                tempString = tempString.Replace("\0\0", "").Trim();
-        //                if (Message.IsValidMessage(tempString))
-        //                {
-        //                    cq_instructionsReceived.Enqueue(tempString);
-        //                    tempString = string.Empty;
-        //                }
-        //            }
-        //            Console.Out.WriteLine($"ReadingReceive {strTemp}");
-        //            Console.Out.WriteLine($"ReadingReceive {tempString}");
-        //            Console.Out.WriteLine($"ReadingReceive {cq_instructionsReceived.Count}");
-        //            strTemp = string.Empty;
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.Out.WriteLine($"Error ReadingChannelReceive: {ex.Message}");
-        //    }
-        //}
-
         private static Channel<string> channelSendProcess = null;
         public static Channel<string> ChannelSendProcess
         {
@@ -365,29 +333,6 @@ namespace MUD_Skeleton.Client.Controllers
             }
             set => readerSendProcess = value;
         }
-
-        //public static async void ReadingChannelSend()
-        //{
-        //    string tempString = string.Empty;
-        //    while (await ReaderSend.WaitToReadAsync())
-        //    {
-        //        string strTemp = await ReaderSend.ReadAsync();
-        //        tempString += strTemp.Trim();
-        //        if (tempString.Contains("{") && tempString.Contains("}"))
-        //        {
-        //            cq_instructionsToSend.Enqueue(tempString);
-        //            Console.BackgroundColor = ConsoleColor.Blue;
-        //            Console.ForegroundColor = ConsoleColor.Yellow;
-        //            Console.Out.WriteLine($"ReadingSend ¡¡SENDED!! {tempString}");
-        //            Console.ResetColor();
-        //            tempString = string.Empty;
-        //        }
-        //        Console.Out.WriteLine($"ReadingSend {strTemp}");
-        //        Console.Out.WriteLine($"ReadingSend {tempString}");
-        //        Console.Out.WriteLine($"ReadingSend {cq_instructionsToSend.Count}");
-        //        strTemp = string.Empty;
-        //    }
-        //}
         #endregion
         #endregion
 
@@ -427,6 +372,14 @@ namespace MUD_Skeleton.Client.Controllers
                          * adding it to the OnlineClient.l_onlineClients[position].L_SendQueueMessages.Enqueue
                          *
                         break; */
+                    case "~RSTIDMPTC":
+                        IdLastSendedId = 1;
+                        Console.BackgroundColor = ConsoleColor.Green;
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Out.WriteLine("Id de mensaje ha sido reseteado a 1 exitosamente");
+                        Console.ResetColor();
+                        return string.Empty;
+                        break;
                     case "~ACHL":
                         if (uint.TryParse(content, out tempUint))
                         {
