@@ -21,7 +21,11 @@ namespace MUD_Skeleton.Client.Controllers
         }
 
         //N° de mensaje, Canal
-        private static List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
+        private static List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>()
+        {
+            new Pares<uint, uint> (0, 0)
+        };
+
         public static List<Pares<uint, uint>> L_channels
         {
             get
@@ -425,7 +429,23 @@ namespace MUD_Skeleton.Client.Controllers
                     case "~REMCHL":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
+                            if (tempUint == ActiveChl) //If the channel to be remove is the one active
+                            {
+                                string strLstNum = string.Empty;
+                                for (int i = 0; i < l_channels.Count; i++)
+                                {
+                                    strLstNum += l_channels[i].Item2;
+                                    if (i < (l_channels.Count - 1))
+                                    {
+                                        strLstNum += ",";
+                                    }
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel " + tempUint + "cannot be removed because is the channel you are on, please move to other channel and try again");
+                                Console.ResetColor();
+                            }
+                            else if (l_channels.Where(c => c.Item2 == tempUint).ToList().Count > 0)
                             {
                                 l_channels.RemoveAll(c => c.Item2 == tempUint);
                                 Console.BackgroundColor = ConsoleColor.Green;

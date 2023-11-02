@@ -10,6 +10,7 @@ namespace MUD_Skeleton.Client
 
     class Program
     {
+        #region Connection Attributes
         static List<Pares<string, Thread>> l_clientThreads = new List<Pares<string, Thread>>();
 
         static string externalMessage = "hello server";
@@ -17,7 +18,9 @@ namespace MUD_Skeleton.Client
 
         static CancellationToken ctSendingDataUDP = new CancellationToken();
         static CancellationToken ctReceivingDataTCP = new CancellationToken();
+        #endregion
 
+        #region Main Operation Methods
         static void Main()
         {
             try
@@ -50,6 +53,7 @@ namespace MUD_Skeleton.Client
                 Console.WriteLine("Error: " + ex.Message);
             }
         }
+        #endregion
 
         #region Sockets Connection
         #region Listening Socket, Comms preparation and Pipeline of comms availability

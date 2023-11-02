@@ -16,7 +16,7 @@ namespace MUD_Skeleton.Commons.Comms
          * 
          * **ELIMINATED** 3) Hacer que cada cliente pueda tener mas de un socket de envío y mas de un socket de recepción simultáneamente
          * 
-         * 4) Adicionar Protección contra Idempotencia
+         * **DONE** 4) Adicionar Protección contra Idempotencia
          */
 
         #region Channel (Msg) Related
@@ -382,7 +382,13 @@ namespace MUD_Skeleton.Commons.Comms
         public TcpClient serverToClientClient;
 
         //Para Canales
-        private List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>();
+        //El primer número es tipo (Confirmar)
+        //El segundo es el número del canal
+        private List<Pares<uint, uint>> l_channels = new List<Pares<uint, uint>>()
+        {
+            new Pares<uint, uint>(0,0)
+        };
+
         public List<Pares<uint, uint>> L_channels
         {
             get

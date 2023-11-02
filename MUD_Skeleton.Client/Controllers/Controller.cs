@@ -9,11 +9,13 @@ namespace MUD_Skeleton.Client.Controllers
 {
     public class Controller
     {
+        #region Controller Attributes
         private static Controller instance;
         public static Controller Instance { get => instance; private set => instance = value; }
         private static Thread ControllerRunning;
         private static Thread ReadingChannelReceive;
         private static Thread ReadingChannelSend;
+        #endregion
 
         public static void Controller_Start()
         {

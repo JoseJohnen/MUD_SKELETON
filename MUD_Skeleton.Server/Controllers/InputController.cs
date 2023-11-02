@@ -257,7 +257,25 @@ namespace MUD_Skeleton.Server.Controllers
                     case "/REM":
                         if (uint.TryParse(content, out tempUint))
                         {
-                            if (clt.L_channels.Where(c => c.Item2 == tempUint).ToList().Count() > 0)
+                            if (tempUint == clt.ActiveChl) //If the channel to be remove is the one active
+                            {
+                                clt.WriterSend.WriteAsync("You cannot eliminate the channel you are on, please move to other channel and try again");
+
+                                string strListNum = string.Empty;
+                                for (int i = 0; i < clt.L_channels.Count; i++)
+                                {
+                                    strListNum += clt.L_channels[i].Item2;
+                                    if (i < (clt.L_channels.Count - 1))
+                                    {
+                                        strListNum += ",";
+                                    }
+                                }
+                                Console.BackgroundColor = ConsoleColor.Green;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                Console.Out.WriteLineAsync("Channel " + tempUint + "cannot be removed because is the channel you are on, please move to other channel and try again");
+                                Console.ResetColor();
+                            }
+                            else if (clt.L_channels.Where(c => c.Item2 == tempUint).ToList().Count() > 0)
                             {
                                 clt.L_channels.RemoveAll(c => c.Item2 == tempUint);
                                 clt.WriterSend.WriteAsync("~REMCHL:" + tempUint);
